@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Pushover Notifier Settings</title>
+  </head>
+  <body>
+    <h1>Pushover Notifier Settings</h1>
+    <form id="settings-form">
+      <label for="pushoverUserKey">Pushover User Key:</label>
+      <input type="text" id="pushoverUserKey" name="pushoverUserKey"><br><br>
+
+      <label for="pushoverAppToken">Pushover App Token:</label>
+      <input type="text" id="pushoverAppToken" name="pushoverAppToken"><br><br>
+
+      <label for="enableNotifications">Enable Notifications:</label>
+      <input type="checkbox" id="enableNotifications" name="enableNotifications"><br><br>
+
+      <h3>Select Accounts to Monitor:</h3>
+      <div id="accounts-list"></div><br>
+
+      <h3>Filter Settings:</h3>
+      <label for="filterSender">Filter by Sender (email contains):</label>
+      <input type="text" id="filterSender" name="filterSender"><br><br>
+
+      <label for="filterSubject">Filter by Subject (contains):</label>
+      <input type="text" id="filterSubject" name="filterSubject"><br><br>
+
+      <h3>Message Body Settings:</h3>
+      <label for="includeBody">Include Email Body:</label>
+      <input type="checkbox" id="includeBody" name="includeBody"><br><br>
+
+      <label for="bodyCharLimit">Character Limit for Body (0 for no limit):</label>
+      <input type="number" id="bodyCharLimit" name="bodyCharLimit" min="0"><br><br>
+
+      <h3>Pushover Notification Settings:</h3>
+      <label for="notificationPriority">Priority:</label>
+      <select id="notificationPriority" name="notificationPriority">
+        <option value="0">Normal</option>
+        <option value="1">High</option>
+        <option value="2">Emergency</option>
+        <option value="-1">Low</option>
+        <option value="-2">Lowest</option>
+      </select><br><br>
+
+      <label for="notificationSound">Sound:</label>
+      <select id="notificationSound" name="notificationSound">
+        <option value="">Default</option>
+        <option value="pushover">Pushover</option>
+        <option value="bike">Bike</option>
+        <option value="bugle">Bugle</option>
+        <option value="cashregister">Cash Register</option>
+        <option value="classical">Classical</option>
+        <option value="cosmic">Cosmic</option>
+        <option value="falling">Falling</option>
+        <option value="gamelan">Gamelan</option>
+        <option value="incoming">Incoming</option>
+        <option value="intermission">Intermission</option>
+        <option value="magic">Magic</option>
+        <option value="mechanical">Mechanical</option>
+        <option value="pianobar">Piano Bar</option>
+        <option value="siren">Siren</option>
+        <option value="spacealarm">Space Alarm</option>
+        <option value="tugboat">Tug Boat</option>
+        <option value="alien">Alien Alarm</option>
+        <option value="climb">Climb</option>
+        <option value="persistent">Persistent</option>
+        <option value="echo">Pushover Echo</option>
+        <option value="updown">Up Down</option>
+        <option value="vibrate">Vibrate Only</option>
+        <option value="none">None (Silent)</option>
+      </select><br><br>
+
+      <h3>Emergency Priority Settings (Priority = 2):</h3>
+      <label for="retryInterval">Retry Interval (in seconds):</label>
+      <input type="number" id="retryInterval" name="retryInterval" min="30" value="60"><br><br>
+
+      <label for="expireTime">Expire Time (in seconds):</label>
+      <input type="number" id="expireTime" name="expireTime" min="60" value="3600"><br><br>
+
+      <button type="submit">Save Settings</button>
+    </form>
+
+    <script src="options.js"></script>
+  </body>
+</html>
