@@ -22,6 +22,26 @@ browser.messages.onNewMailReceived.addListener(async (folder, messageList) => {
     console.log("Notifications are disabled or API keys are missing");
     return;
   }
+  
+  if (browser.accounts) {
+  browser.accounts.list().then(accounts => {
+    console.log('Accounts:', accounts);
+  }).catch(error => {
+    console.error('Error fetching accounts:', error);
+  });
+} else {
+  console.error('browser.accounts API is not available.');
+}
+
+if (browser.messages && browser.messages.onNewMailReceived) {
+  browser.messages.onNewMailReceived.addListener((folder, messageList) => {
+    console.log('New mail received:', messageList);
+    // Handle the new mail
+  });
+} else {
+  console.error('browser.messages API is not available.');
+}
+
 
   for (let message of messageList.messages) {
     let accountId = folder.accountId;

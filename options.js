@@ -14,6 +14,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     expireTime: 3600
   });
 
+document.addEventListener('DOMContentLoaded', async () => {
+    if (browser.accounts) {
+        try {
+            let accounts = await browser.accounts.list();
+            // Populate the accounts in your options page
+        } catch (error) {
+            console.error("Error fetching accounts:", error);
+        }
+    } else {
+        console.error("browser.accounts API is not available in this context.");
+        // Optionally, provide a fallback or alert the user
+    }
+});
+
+
   document.getElementById('pushoverUserKey').value = settings.pushoverUserKey;
   document.getElementById('pushoverAppToken').value = settings.pushoverAppToken;
   document.getElementById('enableNotifications').checked = settings.enableNotifications;
