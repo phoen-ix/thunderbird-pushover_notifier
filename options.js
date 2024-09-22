@@ -14,21 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     expireTime: 3600
   });
 
-document.addEventListener('DOMContentLoaded', async () => {
-    if (browser.accounts) {
-        try {
-            let accounts = await browser.accounts.list();
-            // Populate the accounts in your options page
-        } catch (error) {
-            console.error("Error fetching accounts:", error);
-        }
-    } else {
-        console.error("browser.accounts API is not available in this context.");
-        // Optionally, provide a fallback or alert the user
-    }
-});
-
-
   document.getElementById('pushoverUserKey').value = settings.pushoverUserKey;
   document.getElementById('pushoverAppToken').value = settings.pushoverAppToken;
   document.getElementById('enableNotifications').checked = settings.enableNotifications;
@@ -41,24 +26,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('retryInterval').value = settings.retryInterval;
   document.getElementById('expireTime').value = settings.expireTime;
 
-  let accounts = await browser.accounts.list();
+  // Optional toggle for subfolder inclusion
+  let includeSubfolders = false; // Adjust based on your needs or user preference
+  let accounts = await browser.accounts.list(false);
+
+  console.log(accounts);  // Log account data for debugging
+
   let accountsListDiv = document.getElementById('accounts-list');
 
-  accounts.forEach(account => {
-    let checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = account.id;
-    checkbox.value = account.id;
-    checkbox.checked = settings.selectedAccounts.includes(account.id);
+  // Handle case where no accounts are returned
+  if (accounts.length === 0) {
+    let noAccountsMessage = document.createElement('p');
+    noAccountsMessage.textContent = "No accounts found.";
+    accountsListDiv.appendChild(noAccountsMessage);
+  } else {
+    accounts.forEach(account => {
+      let checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = account.id;
+      checkbox.value = account.id;
+      checkbox.checked = settings.selectedAccounts.includes(account.id);
 
-    let label = document.createElement('label');
-    label.htmlFor = account.id;
-    label.appendChild(document.createTextNode(account.name));
+      let label = document.createElement('label');
+      label.htmlFor = account.id;
+      label.appendChild(document.createTextNode(account.name));
 
-    accountsListDiv.appendChild(checkbox);
-    accountsListDiv.appendChild(label);
-    accountsListDiv.appendChild(document.createElement('br'));
-  });
+      accountsListDiv.appendChild(checkbox);
+      accountsListDiv.appendChild(label);
+      accountsListDiv.appendChild(document.createElement('br'));
+    });
+  }
 
   document.getElementById('settings-form').addEventListener('submit', async (event) => {
     event.preventDefault();
