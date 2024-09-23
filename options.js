@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let includeSubfolders = false; // Adjust based on your needs or user preference
   let accounts = await browser.accounts.list(false);
 
-  console.log(accounts);  // Log account data for debugging
+  // console.log(accounts);  // Log account data for debugging
 
   let accountsListDiv = document.getElementById('accounts-list');
 
