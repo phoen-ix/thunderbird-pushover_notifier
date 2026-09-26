@@ -1,114 +1,210 @@
-browser.messages.onNewMailReceived.addListener(async (folder, messageList) => {
-  console.log("New mail received");
+// Event page: collects new mail reported by Thunderbird and sends it to Pushover.
+//
+// Mail is queued briefly before sending, so that
+//   - message filters get time to move mail out of the Inbox ("Inbox only" mode),
+//   - a burst of mail across folders and accounts becomes a single summary.
+// The wait is deliberately short: a pending timer does not keep the event page
+// alive, and Thunderbird suspends idle event pages after about 30 seconds.
 
-  const settings = await browser.storage.local.get({
-    pushoverUserKey: "",
-    pushoverAppToken: "",
-    enableNotifications: true,
-    selectedAccounts: [],
-    filterSender: "",
-    filterSubject: "",
-    includeBody: false,
-    bodyCharLimit: 0,
-    notificationPriority: '0',
-    notificationSound: '',
-    retryInterval: 60,
-    expireTime: 3600
-  });
+import { isActive, loadSettings } from "./modules/settings.mjs";
+import {
+  discardList,
+  filterStillInInbox,
+  getBodyPreview,
+  getSenderName,
+  isInboxFolder,
+  iterateMessages,
+  queryAll,
+} from "./modules/mail.mjs";
+import { buildMailNotification, buildSummaryNotification, matchesAny, parseTerms } from "./modules/format.mjs";
+import { buildRequestParams, sendNotification } from "./modules/pushover.mjs";
 
-  console.log("Settings loaded:", settings);
+// Time given to filters (including "after junk classification" filters and
+// IMAP moves) before checking whether a mail is still in the Inbox.
+const RECHECK_DELAY_MS = 5000;
+// Quiet time after the last new-mail event before the queue is sent.
+const DEBOUNCE_MS = 1500;
+// Upper bound for how long the first queued mail may wait.
+const MAX_WAIT_MS = 20000;
+// A failed request is only retried while there is still time before the page may be suspended.
+const RETRY_BUDGET_MS = 12000;
 
-  if (!settings.enableNotifications || !settings.pushoverUserKey || !settings.pushoverAppToken) {
-    console.log("Notifications are disabled or API keys are missing");
+const t = (key, substitutions) => messenger.i18n.getMessage(key, substitutions);
+
+let queue = [];
+let firstQueuedAt = 0;
+let flushTimer = null;
+let flushChain = Promise.resolve();
+let debugEnabled = false;
+
+messenger.messages.onNewMailReceived.addListener(onNewMail);
+messenger.runtime.onInstalled.addListener(onInstalled);
+
+async function onNewMail(folder, messageList) {
+  const settings = await loadSettings();
+  debugEnabled = settings.debugLogging;
+
+  if (!isActive(settings)) {
+    debug("Ignoring new mail: notifications are disabled, not consented to, or keys are missing");
+    discardList(messageList);
     return;
   }
-  
-  if (browser.accounts) {
-  browser.accounts.list().then(accounts => {
-    console.log('Accounts:', accounts);
-  }).catch(error => {
-    console.error('Error fetching accounts:', error);
-  });
-} else {
-  console.error('browser.accounts API is not available.');
-}
+  if (!settings.selectedAccounts.includes(folder.accountId)) {
+    debug("Ignoring new mail in an account that is not selected:", folder.accountId);
+    discardList(messageList);
+    return;
+  }
+  if (settings.inboxOnly && !isInboxFolder(folder)) {
+    debug("Ignoring new mail outside the Inbox:", folder.path);
+    discardList(messageList);
+    return;
+  }
 
-if (browser.messages && browser.messages.onNewMailReceived) {
-  browser.messages.onNewMailReceived.addListener((folder, messageList) => {
-    console.log('New mail received:', messageList);
-    // Handle the new mail
-  });
-} else {
-  console.error('browser.messages API is not available.');
-}
+  const senderTerms = parseTerms(settings.filterSender);
+  const subjectTerms = parseTerms(settings.filterSubject);
+  const now = Date.now();
+  let queued = 0;
 
-
-  for (let message of messageList.messages) {
-    let accountId = folder.accountId;
-    if (!settings.selectedAccounts.includes(accountId)) {
-      console.log("Message from an unselected account:", accountId);
+  for await (const message of iterateMessages(messageList)) {
+    if (settings.skipJunk && message.junk) {
       continue;
     }
-
-    let subject = message.subject;
-    let from = message.author;
-
-    if (settings.filterSender && !from.includes(settings.filterSender)) {
-      console.log("Message filtered out by sender:", from);
+    if (!matchesAny(message.author, senderTerms) || !matchesAny(message.subject, subjectTerms)) {
       continue;
     }
-
-    if (settings.filterSubject && !subject.includes(settings.filterSubject)) {
-      console.log("Message filtered out by subject:", subject);
-      continue;
-    }
-
-    let bodyText = "";
-    if (settings.includeBody) {
-      try {
-        let fullMessage = await browser.messages.getFull(message.id);
-        bodyText = fullMessage.parts.filter(part => part.contentType === "text/plain")[0]?.body || "";
-
-        if (settings.bodyCharLimit > 0 && bodyText.length > settings.bodyCharLimit) {
-          bodyText = bodyText.substring(0, settings.bodyCharLimit) + "...";
-        }
-      } catch (error) {
-        console.error("Failed to retrieve the full message body", error);
-      }
-    }
-
-    const requestBody = new URLSearchParams({
-      token: settings.pushoverAppToken,
-      user: settings.pushoverUserKey,
-      message: `New email from ${from}: ${subject}${settings.includeBody ? "\n\n" + bodyText : ""}`,
-      priority: settings.notificationPriority,
-      sound: settings.notificationSound
+    queue.push({
+      id: message.id,
+      headerMessageId: message.headerMessageId,
+      folderId: folder.id,
+      accountId: folder.accountId,
+      author: message.author ?? "",
+      subject: message.subject ?? "",
+      date: message.date,
     });
+    queued++;
+  }
 
-    const retryInterval = Math.max(settings.retryInterval, 30).toString();
-    const expireTime = settings.expireTime.toString();
+  debug(`Queued ${queued} message(s) from ${folder.path}`);
+  if (queued > 0) {
+    scheduleFlush(now, settings.inboxOnly ? RECHECK_DELAY_MS : DEBOUNCE_MS);
+  }
+}
 
-    if (settings.notificationPriority === '2') {
-      requestBody.append('retry', retryInterval);
-      requestBody.append('expire', expireTime);
-    }
+function scheduleFlush(now, wait) {
+  firstQueuedAt ||= now;
+  const due = Math.min(now + wait, firstQueuedAt + MAX_WAIT_MS);
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    // Flushes run one after another: Pushover asks for at most two parallel connections.
+    flushChain = flushChain.then(flush).catch(error => console.error("Pushover Notifier:", error));
+  }, Math.max(0, due - Date.now()));
+}
 
-    console.log("Sending Pushover notification with body:", requestBody.toString());
+async function flush() {
+  const batch = queue;
+  queue = [];
+  firstQueuedAt = 0;
 
-    try {
-      let response = await fetch("https://api.pushover.net/1/messages.json", {
-        method: "POST",
-        body: requestBody
-      });
+  const started = Date.now();
+  const settings = await loadSettings();
+  debugEnabled = settings.debugLogging;
+  if (!isActive(settings) || batch.length === 0) {
+    return;
+  }
 
-      if (!response.ok) {
-        let responseText = await response.text();
-        console.error("Failed to send Pushover notification:", responseText);
-      } else {
-        console.log("Pushover notification sent successfully");
-      }
-    } catch (error) {
-      console.error("Error sending Pushover notification", error);
+  let candidates = batch;
+  if (settings.inboxOnly) {
+    candidates = await filterStillInInbox(batch, {
+      get: id => messenger.messages.get(id),
+      queryAll,
+      skipJunk: settings.skipJunk,
+    });
+    debug(`${batch.length - candidates.length} of ${batch.length} message(s) left the Inbox after filtering`);
+  }
+  if (candidates.length === 0) {
+    return;
+  }
+
+  const senders = await Promise.all(candidates.map(candidate => getSenderName(candidate.author)));
+  const accountNames = settings.showAccountName ? await getAccountNames(candidates) : new Map();
+  const send = notification => deliver(notification, settings, started);
+
+  if (settings.summaryThreshold > 0 && candidates.length >= settings.summaryThreshold) {
+    const accountIds = new Set(candidates.map(candidate => candidate.accountId));
+    const accountName = accountIds.size === 1 ? accountNames.get(candidates[0].accountId) : undefined;
+    const items = candidates.map((candidate, i) => ({ sender: senders[i], subject: candidate.subject }));
+    await send(buildSummaryNotification(items, { accountName }, t));
+    return;
+  }
+
+  for (const [i, candidate] of candidates.entries()) {
+    const body = settings.includeBody ? await getBodyPreview(candidate.id) : "";
+    const notification = buildMailNotification(
+      {
+        sender: senders[i],
+        accountName: accountNames.get(candidate.accountId),
+        subject: candidate.subject,
+        body,
+        date: candidate.date,
+      },
+      settings,
+      t
+    );
+    // Stop at the first failure: bad keys or an exhausted quota would fail for every mail.
+    if (!(await send(notification))) {
+      break;
     }
   }
-});
+}
+
+async function deliver(notification, settings, started) {
+  const result = await sendNotification(buildRequestParams(settings, notification), {
+    retry: Date.now() - started < RETRY_BUDGET_MS,
+  });
+  if (result.ok) {
+    debug("Notification sent");
+  } else {
+    console.error("Pushover Notifier: sending the notification failed:", result.error);
+  }
+  await messenger.storage.local.set({
+    lastStatus: { ok: result.ok, time: Date.now(), error: result.error ?? "" },
+  });
+  return result.ok;
+}
+
+async function getAccountNames(candidates) {
+  const names = new Map();
+  for (const accountId of new Set(candidates.map(candidate => candidate.accountId))) {
+    try {
+      const account = await messenger.accounts.get(accountId);
+      if (account) {
+        names.set(accountId, account.name);
+      }
+    } catch {
+      // Account removed in the meantime; the title just lacks its name.
+    }
+  }
+  return names;
+}
+
+async function onInstalled({ reason, previousVersion }) {
+  if (reason === "install") {
+    await messenger.runtime.openOptionsPage();
+    return;
+  }
+  // 2.0 asks for explicit consent before sending mail data to Pushover. Users
+  // of 1.x who already entered their keys made that choice when they set it up.
+  if (reason === "update" && Number.parseInt(previousVersion, 10) < 2) {
+    const stored = await messenger.storage.local.get(["pushoverUserKey", "pushoverAppToken", "dataConsent"]);
+    if (stored.dataConsent === undefined && stored.pushoverUserKey && stored.pushoverAppToken) {
+      await messenger.storage.local.set({ dataConsent: true });
+    }
+  }
+}
+
+function debug(...args) {
+  if (debugEnabled) {
+    console.debug("Pushover Notifier:", ...args);
+  }
+}

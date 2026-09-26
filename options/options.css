@@ -1,0 +1,197 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f9;
+  --surface: #ffffff;
+  --text: #1c1b22;
+  --muted: #5b5b66;
+  --border: #d7d7db;
+  --accent: #0a66d8;
+  --accent-text: #ffffff;
+  --ok: #1a7f37;
+  --error: #c50e20;
+  --warning-bg: #fff4de;
+  --warning-border: #e2a600;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1b22;
+    --surface: #2b2a33;
+    --text: #fbfbfe;
+    --muted: #b0b0b8;
+    --border: #52525e;
+    --accent: #6fb1ff;
+    --accent-text: #0b1b2e;
+    --ok: #57d38c;
+    --error: #ff848b;
+    --warning-bg: #3d3322;
+    --warning-border: #c89a2c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 96px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, sans-serif;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.6em;
+  margin: 0 0 16px;
+}
+
+h2 {
+  font-size: 1.1em;
+  margin: 0 0 12px;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.check input {
+  margin-top: 3px;
+}
+
+.indented {
+  margin-left: 26px;
+}
+
+.help {
+  color: var(--muted);
+  font-size: 0.93em;
+  margin: 6px 0;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  width: 100%;
+  max-width: 100%;
+}
+
+input[type="number"] {
+  max-width: 10em;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.with-button {
+  display: flex;
+  gap: 8px;
+}
+
+.with-button > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.invalid {
+  border-color: var(--error) !important;
+  outline: 1px solid var(--error);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.status {
+  margin: 10px 0 0;
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.error {
+  color: var(--error);
+}
+
+.banner.warning {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.save-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.save-bar .status {
+  margin: 0;
+}

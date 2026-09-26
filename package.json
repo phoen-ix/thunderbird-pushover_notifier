@@ -1,0 +1,31 @@
+{
+  "name": "thunderbird-pushover-notifier",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Thunderbird add-on that sends Pushover notifications for new mail",
+  "license": "MIT",
+  "repository": "github:phoen-ix/thunderbird-pushover_notifier",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "web-ext lint",
+    "build": "web-ext build --overwrite-dest --filename \"pushover-notifier-{version}.xpi\""
+  },
+  "devDependencies": {
+    "web-ext": "^10.7.0"
+  },
+  "webExt": {
+    "sourceDir": ".",
+    "artifactsDir": "web-ext-artifacts",
+    "ignoreFiles": [
+      "tests",
+      "package.json",
+      "package-lock.json",
+      "web-ext-artifacts",
+      "CHANGELOG.md"
+    ]
+  }
+}

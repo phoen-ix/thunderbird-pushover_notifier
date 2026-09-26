@@ -1,0 +1,116 @@
+{
+  "extensionName": { "message": "Pushover Notifier" },
+  "extensionDescription": { "message": "Sendet eine Pushover-Benachrichtigung aufs Handy, wenn neue E-Mails eintreffen – auf Wunsch nur für E-Mails, die nach Ausführung der Nachrichtenfilter noch im Posteingang liegen." },
+
+  "noSubject": { "message": "(kein Betreff)" },
+  "summaryTitle": {
+    "message": "$COUNT$ neue E-Mails",
+    "placeholders": { "count": { "content": "$1", "example": "7" } }
+  },
+  "summaryMore": {
+    "message": "…und $COUNT$ weitere",
+    "placeholders": { "count": { "content": "$1", "example": "3" } }
+  },
+  "testTitle": { "message": "Pushover Notifier" },
+  "testMessage": { "message": "Testbenachrichtigung von Thunderbird. Deine Einstellungen funktionieren!" },
+
+  "optionsTitle": { "message": "Pushover Notifier – Einstellungen" },
+
+  "sectionPrivacy": { "message": "Datenschutz" },
+  "privacyText": { "message": "Wenn eine neue E-Mail eintrifft, sendet dieses Add-on Absender und Betreff (und, falls aktiviert, eine Vorschau des Inhalts) über eine verschlüsselte Verbindung mit deinen eigenen Pushover-Schlüsseln an Pushover (pushover.net). Pushover stellt die Nachricht dann auf deinen Geräten zu. Es wird nichts an den Autor des Add-ons oder an Dritte gesendet. Benachrichtigungen werden erst verschickt, wenn du unten zustimmst." },
+  "labelDataConsent": { "message": "Ich stimme zu, dass Absender, Betreff und, falls aktiviert, eine Inhaltsvorschau neuer E-Mails an Pushover gesendet werden." },
+
+  "sectionCredentials": { "message": "Pushover-Schlüssel" },
+  "credentialsHelp": { "message": "Deinen User Key findest du nach dem Anmelden im Pushover-Dashboard. Ein API-Token bekommst du, indem du unter pushover.net/apps/build eine Anwendung anlegst." },
+  "labelUserKey": { "message": "User Key (oder Group Key)" },
+  "labelAppToken": { "message": "API-Token der Anwendung" },
+  "buttonShow": { "message": "Anzeigen" },
+  "buttonHide": { "message": "Verbergen" },
+  "buttonValidate": { "message": "Schlüssel prüfen" },
+  "buttonSendTest": { "message": "Testbenachrichtigung senden" },
+  "keysMalformed": { "message": "Pushover-Schlüssel bestehen aus 30 Buchstaben und Ziffern. Bitte prüfe das markierte Feld." },
+  "keysMissing": { "message": "Bitte gib zuerst einen gültigen User Key und ein API-Token ein." },
+  "tokenMissing": { "message": "Bitte gib zuerst ein gültiges API-Token ein." },
+  "permissionDenied": { "message": "Der Zugriff auf api.pushover.net wurde nicht erlaubt, daher ist diese Prüfung nicht möglich." },
+  "keysValid": {
+    "message": "Die Schlüssel sind gültig. Aktive Geräte: $DEVICES$",
+    "placeholders": { "devices": { "content": "$1", "example": "iphone, pixel" } }
+  },
+  "keysInvalid": {
+    "message": "Pushover hat die Schlüssel abgelehnt: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "user key is invalid" } }
+  },
+  "testSent": { "message": "Testbenachrichtigung gesendet. Sieh auf deinem Gerät nach." },
+  "testFailed": {
+    "message": "Die Testbenachrichtigung ist fehlgeschlagen: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "application token is invalid" } }
+  },
+
+  "sectionGeneral": { "message": "Allgemein" },
+  "labelEnableNotifications": { "message": "Bei neuen E-Mails benachrichtigen" },
+
+  "sectionAccounts": { "message": "Überwachte Konten" },
+  "accountsNone": { "message": "Keine Konten gefunden." },
+  "accountsNoneSelected": { "message": "Es ist kein Konto ausgewählt, daher werden keine Benachrichtigungen gesendet." },
+  "accountsPop3Hint": { "message": "POP3-Konten, die in den globalen Posteingang zustellen, empfangen ihre E-Mails in „Lokale Ordner“. Wähle für sie dieses Konto aus." },
+
+  "sectionWhichMail": { "message": "Welche E-Mails" },
+  "labelInboxOnly": { "message": "Nur für E-Mails benachrichtigen, die nach den Nachrichtenfiltern im Posteingang bleiben" },
+  "inboxOnlyHelp": { "message": "E-Mails, die deine Filter in einen anderen Ordner verschieben, löschen oder als Junk markieren, lösen keine Benachrichtigung aus. Das Add-on wartet nach dem Eintreffen einige Sekunden und prüft dann, ob die E-Mail noch im Posteingang liegt; Benachrichtigungen kommen daher etwas später. Ein sehr langsames Verschieben auf dem Server (IMAP) kann trotzdem durchrutschen." },
+  "labelSkipJunk": { "message": "Als Junk markierte E-Mails überspringen" },
+  "labelFilterSender": { "message": "Nur E-Mails von Absendern, die Folgendes enthalten" },
+  "labelFilterSubject": { "message": "Nur E-Mails mit Betreff, der Folgendes enthält" },
+  "filterHelp": { "message": "Ein Begriff pro Zeile. Eine E-Mail muss mindestens einen der Begriffe enthalten; Groß-/Kleinschreibung ist egal. Beim Absender werden Name und Adresse durchsucht. Leer lassen, um alle E-Mails zuzulassen." },
+
+  "sectionContent": { "message": "Inhalt der Benachrichtigung" },
+  "labelIncludeBody": { "message": "Vorschau des E-Mail-Inhalts mitsenden" },
+  "labelBodyCharLimit": { "message": "Maximale Länge der Vorschau in Zeichen (0 = so viel wie passt; Pushover erlaubt insgesamt 1024 Zeichen)" },
+  "labelShowAccountName": { "message": "Kontoname im Titel anzeigen" },
+  "labelSummaryThreshold": { "message": "Eine Zusammenfassung senden, wenn mindestens so viele E-Mails gleichzeitig eintreffen" },
+  "summaryHelp": { "message": "Zum Beispiel beim Start von Thunderbird oder wenn es wieder online geht. 0 schaltet Zusammenfassungen ab und sendet eine Benachrichtigung pro E-Mail." },
+
+  "sectionDelivery": { "message": "Zustellung" },
+  "labelPriority": { "message": "Priorität" },
+  "priorityLowest": { "message": "Niedrigste (kein Hinweis)" },
+  "priorityLow": { "message": "Niedrig (lautlos)" },
+  "priorityNormal": { "message": "Normal" },
+  "priorityHigh": { "message": "Hoch (ignoriert Ruhezeiten)" },
+  "priorityEmergency": { "message": "Notfall (wiederholt bis zur Bestätigung)" },
+  "labelRetryInterval": { "message": "Alle … Sekunden wiederholen (mindestens 30)" },
+  "labelExpireTime": { "message": "Wiederholen nach … Sekunden beenden (höchstens 10800)" },
+  "labelSound": { "message": "Ton" },
+  "soundDefault": { "message": "Standard (wie in der Pushover-App eingestellt)" },
+  "buttonLoadSounds": { "message": "Töne von Pushover laden" },
+  "soundsLoaded": {
+    "message": "$COUNT$ Töne geladen, einschließlich deiner eigenen Töne.",
+    "placeholders": { "count": { "content": "$1", "example": "25" } }
+  },
+  "soundsFailed": {
+    "message": "Das Laden der Töne ist fehlgeschlagen: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "application token is invalid" } }
+  },
+  "labelDevice": { "message": "Gerät" },
+  "placeholderDevice": { "message": "Alle Geräte (mit „Schlüssel prüfen“ auflisten)" },
+
+  "sectionAdvanced": { "message": "Erweitert" },
+  "labelDebugLogging": { "message": "Debug-Meldungen in die Fehlerkonsole schreiben" },
+  "debugHelp": { "message": "Zu öffnen über Extras → Entwicklerwerkzeuge → Fehlerkonsole. Schlüssel und E-Mail-Inhalte werden nie protokolliert." },
+
+  "sectionLastStatus": { "message": "Letzte Benachrichtigung" },
+  "lastStatusNone": { "message": "Noch keine Benachrichtigung gesendet." },
+  "lastStatusOk": {
+    "message": "Erfolgreich gesendet am $TIME$.",
+    "placeholders": { "time": { "content": "$1", "example": "26.9.2026, 10:15:00" } }
+  },
+  "lastStatusError": {
+    "message": "Fehlgeschlagen am $TIME$: $ERROR$",
+    "placeholders": {
+      "time": { "content": "$1", "example": "26.9.2026, 10:15:00" },
+      "error": { "content": "$2", "example": "HTTP 500" }
+    }
+  },
+
+  "buttonSave": { "message": "Einstellungen speichern" },
+  "saved": { "message": "Einstellungen gespeichert." },
+  "savedWithoutConsent": { "message": "Einstellungen gespeichert, aber es werden keine Benachrichtigungen gesendet, bis du oben dem Datenschutzhinweis zustimmst." }
+}

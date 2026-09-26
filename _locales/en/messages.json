@@ -1,0 +1,116 @@
+{
+  "extensionName": { "message": "Pushover Notifier" },
+  "extensionDescription": { "message": "Sends a Pushover notification to your phone when new mail arrives, optionally only for mail that is still in the Inbox after your message filters ran." },
+
+  "noSubject": { "message": "(no subject)" },
+  "summaryTitle": {
+    "message": "$COUNT$ new emails",
+    "placeholders": { "count": { "content": "$1", "example": "7" } }
+  },
+  "summaryMore": {
+    "message": "…and $COUNT$ more",
+    "placeholders": { "count": { "content": "$1", "example": "3" } }
+  },
+  "testTitle": { "message": "Pushover Notifier" },
+  "testMessage": { "message": "Test notification from Thunderbird. Your settings work!" },
+
+  "optionsTitle": { "message": "Pushover Notifier Settings" },
+
+  "sectionPrivacy": { "message": "Privacy" },
+  "privacyText": { "message": "When new mail arrives, this add-on sends its sender and subject (and, if enabled, a preview of the body) to Pushover (pushover.net) over an encrypted connection, using your own Pushover keys. Pushover then delivers it to your devices. Nothing is sent to the add-on's author or anyone else. No notifications are sent until you agree below." },
+  "labelDataConsent": { "message": "I agree that sender, subject and, if enabled, a body preview of new mail are sent to Pushover." },
+
+  "sectionCredentials": { "message": "Pushover keys" },
+  "credentialsHelp": { "message": "Your user key is shown on the Pushover dashboard after logging in. Create an application at pushover.net/apps/build to get an API token." },
+  "labelUserKey": { "message": "User key (or group key)" },
+  "labelAppToken": { "message": "Application API token" },
+  "buttonShow": { "message": "Show" },
+  "buttonHide": { "message": "Hide" },
+  "buttonValidate": { "message": "Check keys" },
+  "buttonSendTest": { "message": "Send test notification" },
+  "keysMalformed": { "message": "Pushover keys are 30 letters and digits long. Please check the highlighted field." },
+  "keysMissing": { "message": "Please enter a valid user key and API token first." },
+  "tokenMissing": { "message": "Please enter a valid API token first." },
+  "permissionDenied": { "message": "Access to api.pushover.net was not granted, so this check can't run." },
+  "keysValid": {
+    "message": "Keys are valid. Active devices: $DEVICES$",
+    "placeholders": { "devices": { "content": "$1", "example": "iphone, pixel" } }
+  },
+  "keysInvalid": {
+    "message": "Pushover rejected the keys: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "user key is invalid" } }
+  },
+  "testSent": { "message": "Test notification sent. Check your device." },
+  "testFailed": {
+    "message": "The test notification failed: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "application token is invalid" } }
+  },
+
+  "sectionGeneral": { "message": "General" },
+  "labelEnableNotifications": { "message": "Send notifications for new mail" },
+
+  "sectionAccounts": { "message": "Accounts to monitor" },
+  "accountsNone": { "message": "No accounts found." },
+  "accountsNoneSelected": { "message": "No account is selected, so no notifications will be sent." },
+  "accountsPop3Hint": { "message": "POP3 accounts that deliver into the global Inbox receive their mail in \"Local Folders\". Select that account for them." },
+
+  "sectionWhichMail": { "message": "Which mail" },
+  "labelInboxOnly": { "message": "Only notify for mail that stays in the Inbox after message filters ran" },
+  "inboxOnlyHelp": { "message": "Mail that your filters move to another folder, delete or mark as junk will not notify you. The add-on waits a few seconds after the mail arrives and then checks that it is still in the Inbox, so notifications arrive slightly later. A very slow move on the server (IMAP) can still slip through." },
+  "labelSkipJunk": { "message": "Skip mail marked as junk" },
+  "labelFilterSender": { "message": "Only mail from senders containing" },
+  "labelFilterSubject": { "message": "Only mail with subjects containing" },
+  "filterHelp": { "message": "One term per line. A mail must contain at least one of the terms; case doesn't matter. The sender is matched against name and address. Leave empty to allow all mail." },
+
+  "sectionContent": { "message": "Notification content" },
+  "labelIncludeBody": { "message": "Include a preview of the mail body" },
+  "labelBodyCharLimit": { "message": "Maximum preview length in characters (0 = as much as fits; Pushover allows 1024 characters in total)" },
+  "labelShowAccountName": { "message": "Show the account name in the title" },
+  "labelSummaryThreshold": { "message": "Send one summary when at least this many mails arrive at once" },
+  "summaryHelp": { "message": "For example when Thunderbird starts or comes back online. 0 turns summaries off and sends one notification per mail." },
+
+  "sectionDelivery": { "message": "Delivery" },
+  "labelPriority": { "message": "Priority" },
+  "priorityLowest": { "message": "Lowest (no alert)" },
+  "priorityLow": { "message": "Low (quiet)" },
+  "priorityNormal": { "message": "Normal" },
+  "priorityHigh": { "message": "High (bypasses quiet hours)" },
+  "priorityEmergency": { "message": "Emergency (repeats until acknowledged)" },
+  "labelRetryInterval": { "message": "Repeat every … seconds (at least 30)" },
+  "labelExpireTime": { "message": "Stop repeating after … seconds (at most 10800)" },
+  "labelSound": { "message": "Sound" },
+  "soundDefault": { "message": "Default (as set in the Pushover app)" },
+  "buttonLoadSounds": { "message": "Load sounds from Pushover" },
+  "soundsLoaded": {
+    "message": "$COUNT$ sounds loaded, including your custom sounds.",
+    "placeholders": { "count": { "content": "$1", "example": "25" } }
+  },
+  "soundsFailed": {
+    "message": "Loading the sounds failed: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "application token is invalid" } }
+  },
+  "labelDevice": { "message": "Device" },
+  "placeholderDevice": { "message": "All devices (use \"Check keys\" to list them)" },
+
+  "sectionAdvanced": { "message": "Advanced" },
+  "labelDebugLogging": { "message": "Write debug messages to the error console" },
+  "debugHelp": { "message": "Open it via Tools → Developer Tools → Error Console. Keys and mail contents are never logged." },
+
+  "sectionLastStatus": { "message": "Last notification" },
+  "lastStatusNone": { "message": "No notification sent yet." },
+  "lastStatusOk": {
+    "message": "Sent successfully on $TIME$.",
+    "placeholders": { "time": { "content": "$1", "example": "9/26/2026, 10:15:00 AM" } }
+  },
+  "lastStatusError": {
+    "message": "Failed on $TIME$: $ERROR$",
+    "placeholders": {
+      "time": { "content": "$1", "example": "9/26/2026, 10:15:00 AM" },
+      "error": { "content": "$2", "example": "HTTP 500" }
+    }
+  },
+
+  "buttonSave": { "message": "Save settings" },
+  "saved": { "message": "Settings saved." },
+  "savedWithoutConsent": { "message": "Settings saved, but no notifications will be sent until you agree to the privacy notice at the top." }
+}

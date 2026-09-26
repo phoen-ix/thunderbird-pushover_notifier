@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="optionsTitle"></title>
+  <link rel="stylesheet" href="options.css">
+  <script type="module" src="options.mjs"></script>
+</head>
+<body>
+  <main>
+    <h1 data-i18n="optionsTitle"></h1>
+
+    <form id="settings-form" novalidate>
+      <section>
+        <h2 data-i18n="sectionPrivacy"></h2>
+        <p class="help" data-i18n="privacyText"></p>
+        <label class="check">
+          <input type="checkbox" id="dataConsent">
+          <span data-i18n="labelDataConsent"></span>
+        </label>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionCredentials"></h2>
+        <p class="help" data-i18n="credentialsHelp"></p>
+        <label class="field">
+          <span data-i18n="labelUserKey"></span>
+          <input type="text" id="pushoverUserKey" autocomplete="off" spellcheck="false" maxlength="30">
+        </label>
+        <label class="field">
+          <span data-i18n="labelAppToken"></span>
+          <span class="with-button">
+            <input type="password" id="pushoverAppToken" autocomplete="off" spellcheck="false" maxlength="30">
+            <button type="button" id="toggle-token" data-i18n="buttonShow"></button>
+          </span>
+        </label>
+        <div class="actions">
+          <button type="button" id="validate-keys" data-i18n="buttonValidate"></button>
+          <button type="button" id="send-test" data-i18n="buttonSendTest"></button>
+        </div>
+        <p id="credentials-status" class="status" role="status" hidden></p>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionGeneral"></h2>
+        <label class="check">
+          <input type="checkbox" id="enableNotifications">
+          <span data-i18n="labelEnableNotifications"></span>
+        </label>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionAccounts"></h2>
+        <div id="accounts-list"></div>
+        <p id="accounts-warning" class="banner warning" data-i18n="accountsNoneSelected" hidden></p>
+        <p class="help" data-i18n="accountsPop3Hint"></p>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionWhichMail"></h2>
+        <label class="check">
+          <input type="checkbox" id="inboxOnly">
+          <span data-i18n="labelInboxOnly"></span>
+        </label>
+        <p class="help indented" data-i18n="inboxOnlyHelp"></p>
+        <label class="check">
+          <input type="checkbox" id="skipJunk">
+          <span data-i18n="labelSkipJunk"></span>
+        </label>
+        <label class="field">
+          <span data-i18n="labelFilterSender"></span>
+          <textarea id="filterSender" rows="3" spellcheck="false"></textarea>
+        </label>
+        <label class="field">
+          <span data-i18n="labelFilterSubject"></span>
+          <textarea id="filterSubject" rows="3"></textarea>
+        </label>
+        <p class="help" data-i18n="filterHelp"></p>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionContent"></h2>
+        <label class="check">
+          <input type="checkbox" id="includeBody">
+          <span data-i18n="labelIncludeBody"></span>
+        </label>
+        <label class="field indented">
+          <span data-i18n="labelBodyCharLimit"></span>
+          <input type="number" id="bodyCharLimit" min="0" max="1024" step="1">
+        </label>
+        <label class="check">
+          <input type="checkbox" id="showAccountName">
+          <span data-i18n="labelShowAccountName"></span>
+        </label>
+        <label class="field">
+          <span data-i18n="labelSummaryThreshold"></span>
+          <input type="number" id="summaryThreshold" min="0" max="100" step="1">
+        </label>
+        <p class="help" data-i18n="summaryHelp"></p>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionDelivery"></h2>
+        <label class="field">
+          <span data-i18n="labelPriority"></span>
+          <select id="notificationPriority">
+            <option value="-2" data-i18n="priorityLowest"></option>
+            <option value="-1" data-i18n="priorityLow"></option>
+            <option value="0" data-i18n="priorityNormal"></option>
+            <option value="1" data-i18n="priorityHigh"></option>
+            <option value="2" data-i18n="priorityEmergency"></option>
+          </select>
+        </label>
+        <div id="emergency-settings" class="indented" hidden>
+          <label class="field">
+            <span data-i18n="labelRetryInterval"></span>
+            <input type="number" id="retryInterval" min="30" max="10800" step="1">
+          </label>
+          <label class="field">
+            <span data-i18n="labelExpireTime"></span>
+            <input type="number" id="expireTime" min="30" max="10800" step="1">
+          </label>
+        </div>
+        <label class="field">
+          <span data-i18n="labelSound"></span>
+          <span class="with-button">
+            <select id="notificationSound"></select>
+            <button type="button" id="load-sounds" data-i18n="buttonLoadSounds"></button>
+          </span>
+        </label>
+        <label class="field">
+          <span data-i18n="labelDevice"></span>
+          <input type="text" id="pushoverDevice" list="device-options" autocomplete="off" spellcheck="false"
+                 data-i18n-placeholder="placeholderDevice">
+          <datalist id="device-options"></datalist>
+        </label>
+        <p id="delivery-status" class="status" role="status" hidden></p>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionAdvanced"></h2>
+        <label class="check">
+          <input type="checkbox" id="debugLogging">
+          <span data-i18n="labelDebugLogging"></span>
+        </label>
+        <p class="help" data-i18n="debugHelp"></p>
+      </section>
+
+      <section>
+        <h2 data-i18n="sectionLastStatus"></h2>
+        <p id="last-status" class="status" data-i18n="lastStatusNone"></p>
+      </section>
+
+      <div class="save-bar">
+        <button type="submit" class="primary" data-i18n="buttonSave"></button>
+        <span id="save-status" class="status" role="status" hidden></span>
+      </div>
+    </form>
+  </main>
+</body>
+</html>
