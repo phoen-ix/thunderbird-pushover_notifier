@@ -85,6 +85,11 @@ export async function saveSettings(values) {
   return settings;
 }
 
+/** Remembers the outcome of the last delivery (shown on the options page). */
+export function saveLastStatus({ ok, error }) {
+  return messenger.storage.local.set({ lastStatus: { ok, time: Date.now(), error: error ?? "" } });
+}
+
 function toInt(value, fallback) {
   const number = typeof value === "number" ? value : Number.parseInt(toText(value).trim(), 10);
   return Number.isFinite(number) ? Math.trunc(number) : fallback;

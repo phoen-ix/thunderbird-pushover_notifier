@@ -6,7 +6,7 @@
 // The wait is deliberately short: a pending timer does not keep the event page
 // alive, and Thunderbird suspends idle event pages after about 30 seconds.
 
-import { isActive, loadSettings } from "./modules/settings.mjs";
+import { isActive, loadSettings, saveLastStatus } from "./modules/settings.mjs";
 import {
   discardList,
   filterStillInInbox,
@@ -167,9 +167,7 @@ async function deliver(notification, settings, started) {
   } else {
     console.error("Pushover Notifier: sending the notification failed:", result.error);
   }
-  await messenger.storage.local.set({
-    lastStatus: { ok: result.ok, time: Date.now(), error: result.error ?? "" },
-  });
+  await saveLastStatus(result);
   return result.ok;
 }
 

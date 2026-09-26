@@ -70,11 +70,11 @@ export async function getBodyPreview(messageId) {
  * Keeps the candidates that are still in an Inbox now, i.e. were not moved,
  * deleted or marked as junk by message filters after Thunderbird reported them.
  *
- * Thunderbird's message ids do not follow moves: `get()` of a moved message
- * throws. Ids can also change without a move (folder repair, compaction), so
- * a failed `get()` is double-checked by searching the original folder for the
- * Message-ID. If even that fails, the message is kept: a notification too many
- * is better than a missed one.
+ * The Inbox the mail arrived in is searched for its Message-ID. The message id
+ * alone is not reliable: after a move by a filter that runs after junk
+ * classification, `get(id)` still returns the old header, which claims to be
+ * in the Inbox. `get()` is only used if the search fails, and if that fails
+ * too, the mail is kept: a notification too many is better than a missed one.
  *
  * @param candidates [{ id, headerMessageId, folderId }]
  * @param deps { get(id), queryAll(queryInfo), skipJunk }
@@ -90,28 +90,19 @@ export async function filterStillInInbox(candidates, { get, queryAll, skipJunk }
 }
 
 async function isStillInInbox(candidate, { get, queryAll, skipJunk }) {
-  let header = null;
-  try {
-    header = await get(candidate.id);
-  } catch {
-    // Moved, deleted or re-indexed; checked below.
-  }
-  if (header) {
-    if (header.folder && !isInboxFolder(header.folder)) {
-      return false;
-    }
-    return !(skipJunk && header.junk);
-  }
+  const wanted = message => !(skipJunk && message.junk);
 
-  if (!candidate.headerMessageId || !candidate.folderId) {
-    return true;
+  if (candidate.headerMessageId && candidate.folderId) {
+    try {
+      const found = await queryAll({ folderId: candidate.folderId, headerMessageId: candidate.headerMessageId });
+      return found.some(wanted);
+    } catch {
+      // Fall back to the message id.
+    }
   }
   try {
-    const found = await queryAll({ folderId: candidate.folderId, headerMessageId: candidate.headerMessageId });
-    if (found.length === 0) {
-      return false;
-    }
-    return !(skipJunk && found.every(message => message.junk));
+    const header = await get(candidate.id);
+    return (!header.folder || isInboxFolder(header.folder)) && wanted(header);
   } catch {
     return true;
   }

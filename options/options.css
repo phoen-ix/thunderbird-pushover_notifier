@@ -82,6 +82,10 @@ section {
   margin-top: 3px;
 }
 
+.field:has(:disabled) {
+  opacity: 0.55;
+}
+
 .indented {
   margin-left: 26px;
 }

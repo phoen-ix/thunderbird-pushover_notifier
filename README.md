@@ -51,7 +51,9 @@ With **Only notify for mail that stays in the Inbox** enabled, the add-on theref
 
 1. ignores new mail reported in any folder other than an Inbox,
 2. waits about 5 seconds,
-3. checks each mail again and only notifies you about those still in the Inbox that were not marked as junk in the meantime.
+3. searches the Inbox for each mail (by its Message-ID) and only notifies you about those still there that were not marked as junk in the meantime.
+
+This is tested with POP3 and IMAP accounts and with all these filter kinds: moving to a folder, moving *after junk classification*, deleting, and marking as junk. See [Development](#development).
 
 Known limits:
 
@@ -70,20 +72,44 @@ Nothing is sent to the add-on's author or to anyone else, and the add-on collect
 The add-on is plain JavaScript (ES modules) without a build step.
 
 ```sh
-npm install      # installs web-ext (dev only)
-npm test         # unit tests (node:test)
-npm run lint     # web-ext lint; warnings about "messagesRead"/"accountsRead" are expected (Thunderbird-only permissions)
-npm run build    # creates web-ext-artifacts/pushover-notifier-<version>.xpi
+npm install        # installs web-ext (dev only)
+npm test           # unit tests (node:test)
+npm run test:e2e   # end-to-end tests in real Thunderbird builds (needs Docker)
+npm run lint       # web-ext lint; warnings about "messagesRead"/"accountsRead" are expected (Thunderbird-only permissions)
+npm run build      # creates web-ext-artifacts/pushover-notifier-<version>.xpi
 ```
 
 To try it out, open *Tools → Developer Tools → Debug Add-ons* in Thunderbird, click *Load Temporary Add-on…* and select `manifest.json`.
 
-Layout:
+### End-to-end tests
+
+`npm run test:e2e` (`tests/e2e/run.sh`) runs the add-on in headless, official Thunderbird builds inside Docker. By default it uses the oldest supported ESR (140) and the current release in English, plus the current release in German. Everything runs locally, and no real mail or Pushover account is involved:
+
+- Mail comes from a small POP3 server (`tests/e2e/servers.mjs`) and from [GreenMail](https://greenmail-mail-test.github.io/greenmail/) over IMAP. The test accounts have message filters that move, delete and junk-mark mail.
+- `api.pushover.net` is a local mock that behaves like the real API, including its CORS headers. Thunderbird reaches it through a proxy with a throwaway test certificate.
+- Thunderbird is driven through Marionette (`tests/e2e/marionette.mjs`).
+
+The scenarios (`tests/e2e/e2e.mjs`) cover:
+
+- the upgrade from 1.3.3.1,
+- notification content,
+- Inbox-only mode with every filter kind, on POP3 and IMAP,
+- summaries, filters, missing consent, and Pushover errors,
+- the settings page, including its permission prompt, in light and dark mode.
+
+Useful variables:
+
+- `TB_BUILDS="156.0.1:de"` picks the builds to test.
+- `E2E_VERBOSE=1` shows Thunderbird's console.
+- `E2E_ARTIFACTS=<dir>` saves screenshots of the settings page.
+
+### Layout
 
 - `background.js`: event page. It receives `messages.onNewMailReceived`, queues mail, runs the Inbox check and sends notifications.
 - `modules/`: settings, notification formatting, mail helpers, Pushover client and i18n. The pure parts are unit-tested in `tests/`.
 - `options/`: the settings page.
 - `_locales/`: translations.
+- `tests/e2e/`: the end-to-end tests.
 
 ## License
 

@@ -11,6 +11,7 @@
   },
   "scripts": {
     "test": "node --test",
+    "test:e2e": "sh tests/e2e/run.sh",
     "lint": "web-ext lint",
     "build": "web-ext build --overwrite-dest --filename \"pushover-notifier-{version}.xpi\""
   },

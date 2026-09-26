@@ -30,5 +30,8 @@ Rewrite for current Thunderbird versions (Manifest V3).
 - An empty "sound" parameter was sent; the emergency expire time was not limited to 3 hours; empty number fields were saved as `NaN`.
 - Leading or trailing spaces in pasted keys broke delivery.
 
+### Development
+- Unit tests (`npm test`) and end-to-end tests in real Thunderbird 140 ESR and current release builds (`npm run test:e2e`, Docker). The end-to-end tests cover POP3 and IMAP accounts with message filters, the upgrade from 1.3.3.1, and the settings page.
+
 ## 1.3.3.1
 - Last Manifest V2 version.

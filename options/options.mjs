@@ -1,4 +1,4 @@
-import { loadSettings, normalizeSettings, saveSettings } from "../modules/settings.mjs";
+import { loadSettings, normalizeSettings, saveLastStatus, saveSettings } from "../modules/settings.mjs";
 import {
   BUILTIN_SOUNDS,
   HOST_PERMISSION,
@@ -222,6 +222,7 @@ async function onSendTest() {
   await withBusyButton($("send-test"), async () => {
     const params = buildRequestParams(settings, { title: t("testTitle"), message: t("testMessage") });
     const result = await sendNotification(params, { retry: false });
+    await saveLastStatus(result);
     if (result.ok) {
       showStatus(status, t("testSent"), "ok");
     } else {
