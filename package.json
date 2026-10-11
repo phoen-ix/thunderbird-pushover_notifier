@@ -7,7 +7,7 @@
   "repository": "github:phoen-ix/thunderbird-pushover_notifier",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=26"
   },
   "scripts": {
     "test": "node --test",
@@ -17,6 +17,9 @@
   },
   "devDependencies": {
     "web-ext": "^10.7.0"
+  },
+  "overrides": {
+    "fx-runner": "1.7.0"
   },
   "webExt": {
     "sourceDir": ".",

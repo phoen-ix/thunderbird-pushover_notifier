@@ -1,7 +1,7 @@
 # Image for the end-to-end test: Node.js, git, openssl, an official Thunderbird
 # build with the libraries it needs to run headless, and the GreenMail test
 # mail server (for the IMAP scenarios).
-FROM node:24-trixie-slim
+FROM node:26.11.1-trixie-slim
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
