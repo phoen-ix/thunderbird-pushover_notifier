@@ -57,7 +57,7 @@ This is tested with POP3 and IMAP accounts and with all these filter kinds: movi
 
 Known limits:
 
-- A filter move that takes longer than about 5 seconds (a very slow IMAP server) can still produce a notification.
+- The Inbox is checked once, about 5 seconds after Thunderbird reported the mail. A filter move that is still running then can still produce a notification: most likely a filter that runs *after junk classification* on an IMAP account, because it acts last and the move happens on the server (a slow server or a busy computer). Listening for the move doesn't help: the notification has been sent by the time the move completes, and Pushover can't take it back.
 - With the IMAP delete model *"Just mark it as deleted"*, a mail moved away on a server without MOVE support stays in the Inbox (marked as deleted) and may still notify you.
 - Notifications arrive a few seconds later than without this mode.
 

@@ -20,7 +20,10 @@ import { buildMailNotification, buildSummaryNotification, matchesAny, parseTerms
 import { buildRequestParams, sendNotification } from "./modules/pushover.mjs";
 
 // Time given to filters (including "after junk classification" filters and
-// IMAP moves) before checking whether a mail is still in the Inbox.
+// IMAP moves) before checking whether a mail is still in the Inbox. The check
+// runs once: a move still running then notifies anyway (README: known limits).
+// Waiting for messages.onMoved wouldn't help: whether a move is coming at all
+// can't be told, so every notification would have to wait for the slowest move.
 const RECHECK_DELAY_MS = 5000;
 // Quiet time after the last new-mail event before the queue is sent.
 const DEBOUNCE_MS = 1500;

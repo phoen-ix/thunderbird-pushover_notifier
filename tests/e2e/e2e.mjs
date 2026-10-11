@@ -30,6 +30,8 @@ const USER_KEY = "uQiRzpo4DXghDmr9QzzfQu27cmVRsG";
 const APP_TOKEN = "azGDORePK8gMaC0QOYAMyEEuzJnyUi";
 // Long enough for the Inbox recheck (5 s) plus sending; anything later is a bug.
 const SETTLE_MS = 10000;
+// How long filter moves may take to show up in the folders (IMAP: on the server).
+const FOLDERS_TIMEOUT_MS = 30000;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failures = [];
@@ -183,10 +185,22 @@ const GET_NEW_MAIL = `
   await fetchNewMail(MailServices.accounts.getAccount(accountKey).incomingServer);
 `;
 
+// Subjects per folder, from the local folder databases. IMAP folders are updated
+// from the server first: a folder's local copy only learns about mail a filter
+// moved into it when the folder is updated.
 const FOLDER_CONTENTS = `
   const [accountKey] = arguments;
-  const { MailServices } = ChromeUtils.importESModule("resource:///modules/MailServices.sys.mjs");
+  ${URL_HELPERS}
   const server = MailServices.accounts.getAccount(accountKey).incomingServer;
+  if (server.type == "imap") {
+    for (const folder of server.rootFolder.descendants) {
+      // An update that is already running may never call the listener: don't wait for it.
+      await Promise.race([
+        runUrl(listener => folder.updateFolderWithListener(null, listener)).catch(() => {}),
+        new Promise(resolve => setTimeout(resolve, 5000)),
+      ]);
+    }
+  }
   const result = {};
   for (const folder of server.rootFolder.descendants) {
     result[folder.name] = [...folder.messages].map(hdr =>
@@ -194,6 +208,15 @@ const FOLDER_CONTENTS = `
     );
   }
   return result;
+`;
+
+// Message-IDs in the account's local Inbox database: what the add-on's Inbox
+// check searches. Read only, so watching it doesn't change what Thunderbird does.
+const INBOX_MESSAGE_IDS = `
+  const [accountKey] = arguments;
+  const { MailServices } = ChromeUtils.importESModule("resource:///modules/MailServices.sys.mjs");
+  const inbox = MailServices.accounts.getAccount(accountKey).incomingServer.rootFolder.getFolderWithFlags(Ci.nsMsgFolderFlags.Inbox);
+  return [...inbox.messages].map(hdr => hdr.messageId);
 `;
 
 const EXTENSION_INFO = `
@@ -333,7 +356,49 @@ async function main() {
       set: values => tb.chrome(STORAGE, ADDON_ID, "set", values),
       get: keys => tb.chrome(STORAGE, ADDON_ID, "get", keys),
     };
-    const folderContents = (account = pop3Account) => tb.chrome(FOLDER_CONTENTS, account.key);
+    /**
+     * The account's folders once `done(folders)` holds, or as they are when
+     * FOLDERS_TIMEOUT_MS has passed. Filter moves on IMAP take a while to show.
+     */
+    const waitForFolders = async (account, done) => {
+      const deadline = Date.now() + FOLDERS_TIMEOUT_MS;
+      for (;;) {
+        const folders = await tb.chrome(FOLDER_CONTENTS, account.key);
+        if (done(folders) || Date.now() >= deadline) {
+          return folders;
+        }
+        await sleep(500);
+      }
+    };
+    /**
+     * Watches when `mail` leaves the account's local Inbox. stop() returns
+     * { seen, leftAt }: whether it was ever there, and when it was first found
+     * gone (null: still there).
+     */
+    const watchInbox = (account, mail) => {
+      const messageId = `${mail.id}@e2e.test`;
+      let seen = false;
+      let leftAt = null;
+      let stopped = false;
+      const polling = (async () => {
+        while (!stopped && leftAt === null) {
+          const inInbox = (await tb.chrome(INBOX_MESSAGE_IDS, account.key)).includes(messageId);
+          if (inInbox) {
+            seen = true;
+          } else if (seen) {
+            leftAt = Date.now();
+          }
+          await sleep(200);
+        }
+      })();
+      return {
+        async stop() {
+          stopped = true;
+          await polling;
+          return { seen, leftAt };
+        },
+      };
+    };
 
     let mailNumber = 0;
     const mail = fields => {
@@ -471,16 +536,14 @@ async function main() {
 
     await scenario("Inbox-only mode on: only mail that stays in the Inbox notifies", { inboxOnly: true }, async () => {
       const sent = await receive(filteredMails(), 1);
-      const folders = await folderContents();
-      console.log(`    folders: ${JSON.stringify(folders)}`);
-      check(
+      const filtered = folders =>
         folders.Newsletters?.some(s => s === "Weekly newsletter") &&
-          folders.Later?.some(s => s === "please later-move this") &&
-          folders.Trash?.some(s => s === "delete-me please") &&
-          folders.Inbox?.some(s => s === "spammy offer [junk]"),
-        "the filters moved, deleted and junk-marked the test mail",
-        folders
-      );
+        folders.Later?.some(s => s === "please later-move this") &&
+        folders.Trash?.some(s => s === "delete-me please") &&
+        folders.Inbox?.some(s => s === "spammy offer [junk]");
+      const folders = await waitForFolders(pop3Account, filtered);
+      console.log(`    folders: ${JSON.stringify(folders)}`);
+      check(filtered(folders), "the filters moved, deleted and junk-marked the test mail", folders);
       check(
         sent.length === 1 && sent[0].message === "Stays in the Inbox",
         "only the mail still in the Inbox notifies",
@@ -506,20 +569,39 @@ async function main() {
       });
 
       await scenario("IMAP, Inbox-only mode on: only mail that stays in the Inbox notifies", { selectedAccounts: [imapAccount.key], inboxOnly: true }, async () => {
-        const sent = await receive(filteredMails(), 1, imapAccount);
-        const folders = await folderContents(imapAccount);
-        console.log(`    folders: ${JSON.stringify(folders)}`);
-        check(
+        const lateMove = "please later-move this";
+        const mails = filteredMails();
+        const watch = watchInbox(imapAccount, mails.find(m => m.subject === lateMove));
+        const sent = await receive(mails, 1, imapAccount);
+        const filtered = folders =>
           folders.Newsletters?.includes("Weekly newsletter") &&
-            folders.Later?.includes("please later-move this") &&
-            !(folders.Inbox ?? folders.INBOX ?? []).some(s => /newsletter|later-move|delete-me/.test(s)),
-          "the filters moved the test mail on the server",
-          folders
-        );
+          folders.Later?.includes(lateMove) &&
+          !(folders.Inbox ?? folders.INBOX ?? []).some(s => /newsletter|later-move|delete-me/.test(s));
+        const folders = await waitForFolders(imapAccount, filtered);
+        const { seen, leftAt } = await watch.stop();
+        console.log(`    folders: ${JSON.stringify(folders)}`);
+        check(filtered(folders), "the filters moved the test mail on the server", folders);
+
+        // The add-on checks the Inbox once, about 5 s after the mail was reported
+        // (README: known limits). The filter running after junk classification
+        // moves the mail on the server; when that move is still running at the
+        // check (a busy machine), the mail notifies. That is accepted only if the
+        // move demonstrably ended after the notification was on its way (with 1 s
+        // for the check itself). A move that ended long before means the Inbox
+        // check failed: the bug fixed in 2.0, so it still fails the test.
+        const lateNotification = sent.find(r => r.message === lateMove);
+        const slowMove = Boolean(lateNotification) && seen && (leftAt === null || leftAt > lateNotification.receivedAt - 1000);
+        if (slowMove) {
+          console.log(
+            `    ⚠ the move by the after-junk filter ended ${leftAt === null ? "after the watch" : `${leftAt - lateNotification.receivedAt} ms after the notification`}: ` +
+              "its notification is the documented limit, not counted as a failure"
+          );
+        }
+        const expected = slowMove ? ["Stays in the Inbox", lateMove] : ["Stays in the Inbox"];
         check(
-          sent.length === 1 && sent[0].message === "Stays in the Inbox",
+          sent.map(r => r.message).sort().join("|") === expected.sort().join("|"),
           "only the mail still in the Inbox notifies",
-          sent.map(r => r.message)
+          { notified: sent.map(r => ({ message: r.message, receivedAt: r.receivedAt })), lateMove: { seen, leftAt } }
         );
       });
 
