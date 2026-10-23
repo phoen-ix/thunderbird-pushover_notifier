@@ -120,7 +120,7 @@ scripts/docs-screenshots.sh            # writes docs/screenshots/*.png
 scripts/docs-screenshots.sh /tmp/shots # or somewhere else
 ```
 
-It runs the end-to-end test in the current Thunderbird release in English and German and keeps the English set plus the German `options-settings.de.png`. Shrink the PNGs with `oxipng -o 4 --strip safe docs/screenshots/*.png` before committing. On GitHub, the manual *Docs screenshots* workflow does the same and returns them as an artifact.
+It runs the end-to-end test in the current Thunderbird release in English and German and keeps the English set plus the German `options-settings.de.png`. If a check fails, it still copies the screenshots, then exits with an error; the log names the check. Shrink the PNGs with `oxipng -o 4 --strip safe docs/screenshots/*.png` before committing. On GitHub, the manual *Docs screenshots* workflow does the same and returns them as an artifact.
 
 ### Layout
 

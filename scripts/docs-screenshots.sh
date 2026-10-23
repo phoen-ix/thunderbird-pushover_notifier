@@ -17,8 +17,13 @@ OUT="${1:-$ROOT/docs/screenshots}"
 ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
 mkdir -p "$OUT"
 
-E2E_ARTIFACTS="$ARTIFACTS" TB_BUILDS="${TB_BUILDS:-latest:en-US latest:de}" sh "$ROOT/tests/e2e/run.sh"
+# A failed check still fails this script, but only after the screenshots
+# are copied: the log names the check, so you can judge whether it touches
+# the settings page before using them.
+status=0
+E2E_ARTIFACTS="$ARTIFACTS" TB_BUILDS="${TB_BUILDS:-latest:en-US latest:de}" sh "$ROOT/tests/e2e/run.sh" || status=$?
 
 cp "$ARTIFACTS"/*-en-US/*.png "$OUT/"
 cp "$ARTIFACTS"/*-de/options-settings.png "$OUT/options-settings.de.png"
 echo "docs-screenshots: $(find "$OUT" -name '*.png' | wc -l) PNGs in $OUT"
+exit $status
