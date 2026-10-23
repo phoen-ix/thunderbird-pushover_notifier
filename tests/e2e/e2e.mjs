@@ -713,7 +713,6 @@ async function main() {
           await page.waitFor(`return document.getElementById("last-status").classList.contains("ok")`),
           "the successful test replaces the failure shown as last notification"
         );
-        await pinLastStatusTime();
 
         await page.click("#validate-keys");
         let prompted = false;

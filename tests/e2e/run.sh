@@ -8,7 +8,7 @@
 # release. By default: the oldest supported ESR line (140) and the current
 # release in English, plus the current release in German. E2E_VERBOSE=1 shows
 # Thunderbird's console, E2E_ARTIFACTS=<dir> keeps screenshots of the options
-# page (in <dir>/<version>-<language>/).
+# page (in <dir>/<version>-<language>/, taken in the Europe/Vienna time zone).
 set -eu
 
 cd "$(dirname "$0")/../.."
@@ -32,7 +32,7 @@ for build in $builds; do
   if [ -n "${E2E_ARTIFACTS:-}" ]; then
     mkdir -p "$E2E_ARTIFACTS/$version-$lang"
     chmod a+rwx "$E2E_ARTIFACTS/$version-$lang"
-    artifacts="--volume $(cd "$E2E_ARTIFACTS/$version-$lang" && pwd):/artifacts --env E2E_ARTIFACTS=/artifacts"
+    artifacts="--volume $(cd "$E2E_ARTIFACTS/$version-$lang" && pwd):/artifacts --env E2E_ARTIFACTS=/artifacts --env TZ=Europe/Vienna"
   fi
   # shellcheck disable=SC2086 # $artifacts holds several arguments
   docker run --rm --volume "$PWD:/repo:ro" --env E2E_VERBOSE="${E2E_VERBOSE:-}" $artifacts \
