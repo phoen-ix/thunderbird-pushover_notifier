@@ -75,7 +75,7 @@ The add-on is plain JavaScript (ES modules) without a build step.
 npm install        # installs web-ext (dev only)
 npm test           # unit tests (node:test)
 npm run test:e2e   # end-to-end tests in real Thunderbird builds (needs Docker)
-npm run lint       # web-ext lint; warnings about "messagesRead"/"accountsRead" are expected (Thunderbird-only permissions)
+npm run lint       # web-ext lint; warnings about "messagesRead"/"accountsRead" (Thunderbird-only permissions) and Firefox for Android are expected
 npm run build      # creates web-ext-artifacts/pushover-notifier-<version>.xpi
 ```
 
