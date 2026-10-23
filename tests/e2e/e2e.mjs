@@ -14,6 +14,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { DEFAULTS } from "../../modules/settings.mjs";
 import { Marionette } from "./marionette.mjs";
 import { buildMail, createCertificates, startImapServer, startPop3Server, startPushoverMock } from "./servers.mjs";
 
@@ -22,6 +23,8 @@ const TB_BINARY = process.env.TB_BINARY ?? "thunderbird";
 const VERBOSE = Boolean(process.env.E2E_VERBOSE);
 // Directory for screenshots of the options page (optional).
 const ARTIFACTS = process.env.E2E_ARTIFACTS;
+// The time screenshots show as the last delivery, so they don't change between runs.
+const SCREENSHOT_TIME = Date.parse("2026-06-15T10:00:00+02:00");
 const ADDON_ID = "pushover-notifier@monumental.at";
 // Last 1.x release (Manifest V2); installed first to test the upgrade path.
 const LEGACY_COMMIT = "afb8089";
@@ -235,7 +238,8 @@ const EXTENSION_INFO = `
 
 // Acts on the page in the Thunderbird tab showing `url`. Scripts run through
 // the actor Marionette uses for Firefox tabs, with system privileges (needed
-// for trusted mouse events).
+// for trusted mouse events). "screenshot" takes the rectangle [x, y, width,
+// height] of the page (CSS pixels) and returns a PNG at twice that size.
 const IN_TAB = `
   const [url, action, script, args] = arguments;
   const win = Services.wm.getMostRecentWindow("mail:3pane");
@@ -255,13 +259,11 @@ const IN_TAB = `
     return null;
   }
   if (action == "screenshot") {
-    const { width, height } = await run(
-      "return { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight };"
-    );
-    const snapshot = await windowGlobal.drawSnapshot(new win.DOMRect(0, 0, width, height), 1, "white");
+    const [x, y, width, height] = args;
+    const snapshot = await windowGlobal.drawSnapshot(new win.DOMRect(x, y, width, height), 2, "white");
     const canvas = win.document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = width * 2;
+    canvas.height = height * 2;
     canvas.getContext("2d").drawImage(snapshot, 0, 0);
     snapshot.close();
     return canvas.toDataURL("image/png").split(",")[1];
@@ -313,7 +315,11 @@ const STORAGE = `
   const extension = ExtensionParent.GlobalManager.getExtension(id);
   const db = await ExtensionStorageIDB.open(ExtensionStorageIDB.getStoragePrincipal(extension));
   if (action == "set") {
-    await db.set(data);
+    // Like storage.local.set(): open pages of the add-on hear about the change.
+    const changes = await db.set(data);
+    if (changes) {
+      ExtensionStorageIDB.notifyListeners(extension.id, changes);
+    }
     return null;
   }
   return db.get(data);
@@ -668,6 +674,17 @@ async function main() {
       pushover.clear();
       const url = await tb.chrome(OPEN_OPTIONS, ADDON_ID);
       const page = await OptionsPage.open(tb, url);
+      /** Shows the last delivery at SCREENSHOT_TIME (only when taking screenshots). */
+      const pinLastStatusTime = async () => {
+        if (ARTIFACTS) {
+          const { lastStatus } = await storage.get(["lastStatus"]);
+          await storage.set({ lastStatus: { ...lastStatus, time: SCREENSHOT_TIME } });
+          check(
+            await page.waitFor(`return document.getElementById("last-status").textContent.includes(new Date(${SCREENSHOT_TIME}).toLocaleString())`),
+            "the last status follows storage changes"
+          );
+        }
+      };
       try {
         const loaded = await page.waitFor(`return document.getElementById("pushoverUserKey").value === ${JSON.stringify(USER_KEY)}`);
         check(loaded, "opens with the stored settings");
@@ -682,7 +699,8 @@ async function main() {
         check(texts.heading === msg("optionsTitle") && texts.untranslated === 0, "all texts are localized", texts);
         check(texts.accounts.includes("E2E POP3:true"), "lists the accounts with their selection", texts.accounts);
         check(/application token is invalid/.test(texts.lastStatus), "shows the last delivery status", texts.lastStatus);
-        await page.screenshot("options-page");
+        await pinLastStatusTime();
+        await page.screenshot("options-delivery-error");
 
         await page.click("#send-test");
         await page.waitFor(`return document.getElementById("credentials-status").classList.contains("ok")`);
@@ -695,6 +713,7 @@ async function main() {
           await page.waitFor(`return document.getElementById("last-status").classList.contains("ok")`),
           "the successful test replaces the failure shown as last notification"
         );
+        await pinLastStatusTime();
 
         await page.click("#validate-keys");
         let prompted = false;
@@ -734,7 +753,7 @@ async function main() {
           "Save stores the settings (clamped) and keeps the loaded sounds",
           saved
         );
-        await page.screenshot("options-page-after-actions");
+        await page.screenshot("options-settings", "#accounts-list");
 
         // Pretend the system uses a dark theme: the page should switch to its dark colors.
         await tb.chrome(`Services.prefs.setIntPref("ui.systemUsesDarkTheme", 1);`);
@@ -742,8 +761,31 @@ async function main() {
           `return getComputedStyle(document.body).backgroundColor != "rgb(247, 247, 249)"`
         );
         check(dark, "the page follows the dark color scheme");
-        await page.screenshot("options-page-dark");
+        await page.screenshot("options-settings.dark", "#accounts-list");
         await tb.chrome(`Services.prefs.clearUserPref("ui.systemUsesDarkTheme");`);
+      } finally {
+        await page.close();
+      }
+    });
+
+    await scenario("Options page after a fresh install", { ...DEFAULTS, lastStatus: null, customSounds: null }, async () => {
+      const page = await OptionsPage.open(tb, await tb.chrome(OPEN_OPTIONS, ADDON_ID));
+      try {
+        await page.waitFor(`return document.querySelector('input[name="account"]') !== null`);
+        const state = await page.run(`
+          return {
+            consent: document.getElementById("dataConsent").checked,
+            userKey: document.getElementById("pushoverUserKey").value,
+            accountsWarning: !document.getElementById("accounts-warning").hidden,
+            lastStatus: document.getElementById("last-status").textContent,
+          };
+        `);
+        check(
+          !state.consent && state.userKey === "" && state.accountsWarning && state.lastStatus === msg("lastStatusNone"),
+          "asks for consent, keys and accounts",
+          state
+        );
+        await page.screenshot("options-first-run", "#accounts-list");
       } finally {
         await page.close();
       }
@@ -818,12 +860,28 @@ class OptionsPage {
     return this.run(CLICK, selector);
   }
 
-  /** Saves a full-page screenshot to $E2E_ARTIFACTS, if set. */
-  async screenshot(name) {
-    if (ARTIFACTS) {
-      const png = await this.tb.chrome(IN_TAB, this.url, "screenshot");
-      writeFileSync(path.join(ARTIFACTS, `${name}.png`), Buffer.from(png, "base64"));
+  /**
+   * Saves a screenshot to $E2E_ARTIFACTS, if set: the settings column, down to
+   * the section holding `untilSelector`, or to the save bar (at most 2400 CSS
+   * pixels). The save bar, fixed to the window bottom, is shown at the end of
+   * the page instead.
+   */
+  async screenshot(name, untilSelector) {
+    if (!ARTIFACTS) {
+      return;
     }
+    const rect = await this.run(`
+      window.scrollTo(0, 0);
+      const saveBar = document.querySelector(".save-bar");
+      saveBar.style.position = "static";
+      const main = document.querySelector("main").getBoundingClientRect();
+      const last = arguments[0] ? document.querySelector(arguments[0]).closest("section") : saveBar;
+      const end = last.getBoundingClientRect().bottom + 12;
+      return [Math.floor(main.left) - 24, 0, Math.ceil(main.width) + 48, Math.min(Math.ceil(end), 2400)];
+    `, untilSelector);
+    const png = await this.tb.chrome(IN_TAB, this.url, "screenshot", null, rect);
+    await this.run(`document.querySelector(".save-bar").style.position = "";`);
+    writeFileSync(path.join(ARTIFACTS, `${name}.png`), Buffer.from(png, "base64"));
   }
 
   close() {

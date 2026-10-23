@@ -1,0 +1,38 @@
+name: Docs screenshots
+
+# Regenerates the docs screenshots (docs/screenshots/*.png) with
+# scripts/docs-screenshots.sh: runs the end-to-end test in the current
+# Thunderbird release (English and German) and keeps its settings-page
+# screenshots. The PNGs come back as the `docs-screenshots` artifact - this
+# workflow never commits. Unzip the artifact into docs/screenshots/, look at
+# the diff, and commit it yourself.
+#
+# Manual only: screenshots are regenerated on purpose, when the settings page
+# has changed, not on every push.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The test installs the last 1.x release (commit afb8089) first.
+          fetch-depth: 0
+
+      - name: Run the docs tour
+        run: ARTIFACTS="$RUNNER_TEMP/docs-run" scripts/docs-screenshots.sh "$RUNNER_TEMP/screenshots"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docs-screenshots
+          path: ${{ runner.temp }}/screenshots/
+          retention-days: 14

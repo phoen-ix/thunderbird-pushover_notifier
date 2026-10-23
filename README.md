@@ -1,5 +1,7 @@
 # Pushover Notifier – Thunderbird Add-on
 
+<img src="docs/screenshots/options-settings.png" alt="The add-on's settings page: consent, checked Pushover keys with the devices found, and the accounts to monitor" width="800">
+
 Sends a [Pushover](https://pushover.net) notification to your phone (or any other Pushover device) when new mail arrives in Thunderbird. It is useful for mail accounts that don't allow forwarding.
 
 This add-on is not affiliated with or endorsed by Pushover. It was created independently. Use at your own risk.
@@ -29,6 +31,8 @@ This add-on is not affiliated with or endorsed by Pushover. It was created indep
 
 ## Settings
 
+<img src="docs/screenshots/options-first-run.png" alt="Settings page after a fresh install: consent unticked, empty keys, a warning that no account is selected" width="800">
+
 | Setting | Meaning |
 |---|---|
 | Send notifications for new mail | Master switch. |
@@ -42,6 +46,10 @@ This add-on is not affiliated with or endorsed by Pushover. It was created indep
 | Priority, Sound, Device | Passed to Pushover. *Load sounds from Pushover* adds your custom sounds. *Device* can be left empty to send to all devices. |
 | Emergency: repeat every / stop after | Only for emergency priority. Pushover requires at least 30 s between repeats and at most 10800 s (3 h) in total. |
 | Debug messages | Writes details to *Tools → Developer Tools → Error Console*. Keys and mail contents are never logged. |
+
+The *Last notification* section shows the result of the last delivery. All settings at a glance, with a failed delivery: [full settings page](docs/screenshots/options-delivery-error.png). The page follows Thunderbird's dark mode and is available in German; all screenshots are in the [gallery](docs/screenshots/README.md).
+
+<img src="docs/screenshots/options-settings.dark.png" alt="The settings page in dark mode" width="800">
 
 ## Inbox-only mode
 
@@ -99,9 +107,20 @@ The scenarios (`tests/e2e/e2e.mjs`) cover:
 
 Useful variables:
 
-- `TB_BUILDS="156.0.1:de"` picks the builds to test.
+- `TB_BUILDS="latest:de"` picks the builds to test (`<version>:<language>`; `latest` is the current release).
 - `E2E_VERBOSE=1` shows Thunderbird's console.
-- `E2E_ARTIFACTS=<dir>` saves screenshots of the settings page.
+- `E2E_ARTIFACTS=<dir>` saves screenshots of the settings page (in `<dir>/<version>-<language>/`).
+
+### Screenshots
+
+The screenshots in `docs/screenshots/` ([gallery](docs/screenshots/README.md)) are taken by the end-to-end test. To regenerate them (needs Docker):
+
+```sh
+scripts/docs-screenshots.sh            # writes docs/screenshots/*.png
+scripts/docs-screenshots.sh /tmp/shots # or somewhere else
+```
+
+It runs the end-to-end test in the current Thunderbird release in English and German and keeps the English set plus the German `options-settings.de.png`. Shrink the PNGs with `oxipng -o 4 --strip safe docs/screenshots/*.png` before committing. On GitHub, the manual *Docs screenshots* workflow does the same and returns them as an artifact.
 
 ### Layout
 
@@ -110,6 +129,7 @@ Useful variables:
 - `options/`: the settings page.
 - `_locales/`: translations.
 - `tests/e2e/`: the end-to-end tests.
+- `scripts/docs-screenshots.sh`: regenerates `docs/screenshots/`.
 
 ## License
 

@@ -23,6 +23,8 @@
     "artifactsDir": "web-ext-artifacts",
     "ignoreFiles": [
       "tests",
+      "docs",
+      "scripts",
       "package.json",
       "package-lock.json",
       "web-ext-artifacts",
