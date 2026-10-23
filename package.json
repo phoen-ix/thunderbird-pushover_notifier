@@ -16,10 +16,7 @@
     "build": "web-ext build --overwrite-dest --filename \"pushover-notifier-{version}.xpi\""
   },
   "devDependencies": {
-    "web-ext": "^10.7.0"
-  },
-  "overrides": {
-    "fx-runner": "1.7.0"
+    "web-ext": "^10.8.0"
   },
   "webExt": {
     "sourceDir": ".",
