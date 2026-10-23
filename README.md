@@ -103,7 +103,7 @@ The scenarios (`tests/e2e/e2e.mjs`) cover:
 - notification content,
 - Inbox-only mode with every filter kind, on POP3 and IMAP,
 - summaries, filters, missing consent, and Pushover errors,
-- the settings page, including its permission prompt, in light and dark mode.
+- the settings page, including its permission prompt, in light and dark mode, and after a fresh install.
 
 Useful variables:
 
