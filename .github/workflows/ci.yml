@@ -1,0 +1,50 @@
+name: CI
+
+# Unit tests and web-ext lint on every push to main and every PR. The
+# end-to-end test (real Thunderbird builds in Docker, several minutes per
+# build) only runs on a manual dispatch.
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+
+  e2e:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The test installs the last 1.x release (commit afb8089) first.
+          fetch-depth: 0
+
+      # Also renders the settings-page screenshots, as a check; the artifact
+      # is never the one to commit (that is docs-screenshots.yml).
+      - name: End-to-end test
+        run: E2E_ARTIFACTS="$RUNNER_TEMP/e2e" npm run test:e2e
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: ${{ runner.temp }}/e2e/
+          retention-days: 7

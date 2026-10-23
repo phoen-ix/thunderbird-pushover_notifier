@@ -130,6 +130,7 @@ It runs the end-to-end test in the current Thunderbird release in English and Ge
 - `_locales/`: translations.
 - `tests/e2e/`: the end-to-end tests.
 - `scripts/docs-screenshots.sh`: regenerates `docs/screenshots/`.
+- `.github/workflows/`: CI (unit tests, lint, build; the end-to-end test on manual dispatch) and the manual *Docs screenshots* workflow.
 
 ## License
 
