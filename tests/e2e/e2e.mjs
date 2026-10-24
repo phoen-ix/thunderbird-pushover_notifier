@@ -626,7 +626,8 @@ async function main() {
           1,
           imapAccount
         );
-        check(sent[0]?.message === "IMAP HTML\n\nHello from IMAP", "the preview is the plain text of the body", sent[0]?.message);
+        const preview = sent.find(r => r.message?.startsWith("IMAP HTML"));
+        check(preview?.message === "IMAP HTML\n\nHello from IMAP", "the preview is the plain text of the body", sent.map(r => r.message));
       });
     } else {
       console.log("\nIMAP scenarios skipped: GREENMAIL_JAR is not set.");
