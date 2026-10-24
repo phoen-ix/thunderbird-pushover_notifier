@@ -125,6 +125,11 @@ const CREATE_ACCOUNT = `
     server.QueryInterface(Ci.nsIPop3IncomingServer).leaveMessagesOnServer = false;
     server.QueryInterface(Ci.nsILocalMailIncomingServer).createDefaultMailboxes();
   } else {
+    // No IDLE: Thunderbird fetches new mail only when the test asks, after all
+    // of it is on the server. With IDLE it starts fetching while GreenMail is
+    // still receiving it, so how the mail is split into fetches, and whether
+    // the filters treat each mail as new, depends on timing.
+    server.QueryInterface(Ci.nsIImapIncomingServer).useIdle = false;
     await runUrl(listener => MailServices.imap.discoverAllFolders(root, listener, null));
     folderNames.push("Trash");
   }
@@ -592,10 +597,13 @@ async function main() {
         // The add-on checks the Inbox once, about 5 s after the mail was reported
         // (README: known limits). The filter running after junk classification
         // moves the mail on the server; when that move is still running at the
-        // check (a busy machine), the mail notifies. That is accepted only if the
-        // move demonstrably ended after the notification was on its way (with 1 s
-        // for the check itself). A move that ended long before means the Inbox
-        // check failed: the bug fixed in 2.0, so it still fails the test.
+        // check (a busy machine), the mail notifies. Thunderbird 140 always gets
+        // there: it skips these filters while the new mail keeps the Inbox
+        // locked and runs them at the next update of the folder (here: in
+        // waitForFolders). That is accepted only if the move demonstrably ended
+        // after the notification was on its way (with 1 s for the check itself).
+        // A move that ended long before means the Inbox check failed: the bug
+        // fixed in 2.0, so it still fails the test.
         const lateNotification = sent.find(r => r.message === lateMove);
         const slowMove = Boolean(lateNotification) && seen && (leftAt === null || leftAt > lateNotification.receivedAt - 1000);
         if (slowMove) {
