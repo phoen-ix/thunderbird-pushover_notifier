@@ -13,7 +13,7 @@ set -eu
 
 cd "$(dirname "$0")/../.."
 
-builds="${TB_BUILDS:-140.16.0esr:en-US latest:en-US latest:de}"
+builds="${TB_BUILDS:-140.17.0esr:en-US latest:en-US latest:de}"
 case "$builds" in *latest*)
   latest=$(curl -fsI "https://download.mozilla.org/?product=thunderbird-latest&os=linux64&lang=en-US" \
     | sed -n 's|^[Ll]ocation: .*/releases/\([^/]*\)/.*|\1|p' | tr -d '\r')
