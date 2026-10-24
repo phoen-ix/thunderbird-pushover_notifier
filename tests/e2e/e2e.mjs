@@ -197,9 +197,10 @@ const FOLDER_CONTENTS = `
   const server = MailServices.accounts.getAccount(accountKey).incomingServer;
   if (server.type == "imap") {
     for (const folder of server.rootFolder.descendants) {
+      const imapFolder = folder.QueryInterface(Ci.nsIMsgImapMailFolder);
       // An update that is already running may never call the listener: don't wait for it.
       await Promise.race([
-        runUrl(listener => folder.updateFolderWithListener(null, listener)).catch(() => {}),
+        runUrl(listener => imapFolder.updateFolderWithListener(null, listener)).catch(() => {}),
         new Promise(resolve => setTimeout(resolve, 5000)),
       ]);
     }
