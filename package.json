@@ -28,7 +28,8 @@
       "package.json",
       "package-lock.json",
       "web-ext-artifacts",
-      "CHANGELOG.md"
+      "CHANGELOG.md",
+      "README.md"
     ]
   }
 }

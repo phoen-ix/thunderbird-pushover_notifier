@@ -11,6 +11,7 @@ Rewrite for current Thunderbird versions (Manifest V3).
 - Load **custom sounds** from Pushover and pick a target **device**.
 - Sender and subject filters accept several terms (one per line) and ignore case.
 - Option to show the account name in the notification title.
+- New settings page; it follows Thunderbird's dark mode.
 - German translation.
 
 ### Changed
@@ -30,8 +31,13 @@ Rewrite for current Thunderbird versions (Manifest V3).
 - An empty "sound" parameter was sent; the emergency expire time was not limited to 3 hours; empty number fields were saved as `NaN`.
 - Leading or trailing spaces in pasted keys broke delivery.
 
+### Upgrading from 1.3.3.1
+- Update Thunderbird to 140 or newer first; the add-on then updates as usual. Your keys, accounts and other settings are kept.
+- If you had entered your Pushover keys, notifications continue without any action. Otherwise open the settings page, tick the consent checkbox and enter your keys.
+- To get junk mail notifications again, untick *Skip mail marked as junk*. To get one notification per mail even in bursts, set the summary threshold to 0.
+
 ### Development
-- Unit tests (`npm test`) and end-to-end tests in real Thunderbird 140 ESR and current release builds (`npm run test:e2e`, Docker). The end-to-end tests cover POP3 and IMAP accounts with message filters, the upgrade from 1.3.3.1, and the settings page.
+- Unit tests (`npm test`) and end-to-end tests in real Thunderbird 140 ESR and current release builds (`npm run test:e2e`, Docker). The end-to-end tests cover POP3 and IMAP accounts with message filters, the upgrade from 1.3.3.1, and the settings page. CI runs both on every push.
 
 ## 1.3.3.1
 - Last Manifest V2 version.
