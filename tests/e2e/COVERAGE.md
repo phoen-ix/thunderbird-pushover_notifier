@@ -27,14 +27,17 @@ Plus 23 cross-cutting rows (notification paths, account types, install/update, l
 | page options/options.html | ✅ Options page › opens with the stored settings |
 | background background.js | ✅ Upgrade from 1.3.3.1 (Manifest V2) to 2.0 keeps settings and migrates consent › 2.0.0 (Manifest V3) is loaded; › the manifest loads without warnings; › the permissions are granted |
 | event messenger.messages.onNewMailReceived | ✅ Default mode: sender as title, subject + body preview, emergency priority › one notification per mail (and every notification scenario below) |
-| event messenger.runtime.onInstalled | ✅ install: Fresh install › the settings page opens by itself; update: Upgrade from 1.3.3.1 … › consent is migrated for users with keys, › no options tab is opened on update; Update from 1.x without keys › consent is not assumed without keys |
+| event messenger.runtime.onInstalled | ✅ each install waits for › 2.0.0 is installed and its background script runs (onInstalled has fired); install: Fresh install › the settings page opens by itself; update: Upgrade from 1.3.3.1 … › consent is migrated for users with keys, › no options tab is opened on update; Update from 1.x without keys › consent is not assumed without keys |
 | event messenger.storage.onChanged | ✅ Options page › the successful test replaces the failure shown as last notification |
 
 ## Settings page
 
+Every setting (each checkbox and value field) also goes through the form once: Options page › Save stores
+every field of the form. The rows below name the checks of its effect.
+
 | Item | Covered by |
 |---|---|
-| control #settings-form | ✅ Options page › Save stores the settings (clamped) and keeps the loaded sounds |
+| control #settings-form | ✅ Options page › Save stores the settings (clamped) and keeps the loaded sounds, › Save stores every field of the form |
 | control #dataConsent | ✅ Options page: input checks and errors › Save without consent warns that nothing will be sent, › the withdrawn consent is saved; effect: No consent › no notification |
 | control #pushoverUserKey | ✅ Options page › opens with the stored settings; Options page: input checks and errors › Save refuses a malformed key, › the malformed key is marked, › typing clears the mark; effect: No user key › no notification |
 | control #pushoverAppToken | ✅ Options page: input checks and errors › Check keys needs both keys, › Load sounds needs the token; effect: Default mode: sender as title, … › keys are sent |

@@ -239,6 +239,7 @@ const EXTENSION_INFO = `
   return extension && {
     version: extension.version,
     manifestVersion: extension.manifestVersion,
+    background: extension.backgroundState,
     warnings: extension.warnings,
     permissions: [...extension.permissions],
     optionsUrl: extension.baseURI.resolve("options/options.html"),
@@ -446,11 +447,28 @@ async function main() {
     };
 
     // -- Upgrade from 1.x ---------------------------------------------------
+    /**
+     * Installs the add-on in `dir` (temporarily) and waits until that version's
+     * background script runs: then onInstalled has fired. Its handler gets 2 s
+     * more to finish. Returns EXTENSION_INFO.
+     */
+    const install = async dir => {
+      const { version } = JSON.parse(readFileSync(path.join(dir, "manifest.json"), "utf8"));
+      await tb.send("Addon:Install", { path: dir, temporary: true });
+      let info;
+      for (let i = 0; i < 100 && !(info?.version === version && info.background === "running"); i++) {
+        await sleep(200);
+        info = await tb.chrome(EXTENSION_INFO, ADDON_ID);
+      }
+      check(info?.version === version && info.background === "running", `${version} is installed and its background script runs`, info);
+      await sleep(2000);
+      return tb.chrome(EXTENSION_INFO, ADDON_ID);
+    };
+
     console.log("Upgrade from 1.3.3.1 (Manifest V2) to 2.0 keeps settings and migrates consent");
     const legacyDir = mkdtempSync(path.join(workDir, "legacy-"));
     execSync(`git -c safe.directory='*' -C "${REPO}" archive ${LEGACY_COMMIT} | tar -x -C "${legacyDir}"`);
-    await tb.send("Addon:Install", { path: legacyDir, temporary: true });
-    await sleep(1000);
+    await install(legacyDir);
     const legacySettings = {
       pushoverUserKey: USER_KEY,
       pushoverAppToken: APP_TOKEN,
@@ -466,9 +484,7 @@ async function main() {
       expireTime: 3600,
     };
     await storage.set(legacySettings);
-    await tb.send("Addon:Install", { path: REPO, temporary: true });
-    await sleep(3000);
-    const info = await tb.chrome(EXTENSION_INFO, ADDON_ID);
+    const info = await install(REPO);
     check(info?.version === "2.0.0" && info.manifestVersion === 3, "2.0.0 (Manifest V3) is loaded", info);
     check(info?.warnings.length === 0, "the manifest loads without warnings", info?.warnings);
     check(
@@ -869,6 +885,45 @@ async function main() {
         check(dark, "the page follows the dark color scheme");
         await page.screenshot("options-settings.dark", "#accounts-list");
         await tb.chrome(`Services.prefs.clearUserPref("ui.systemUsesDarkTheme");`);
+
+        // Every field once through the form: change them all, save, read storage.
+        const edited = {
+          dataConsent: false,
+          enableNotifications: false,
+          inboxOnly: false,
+          skipJunk: false,
+          includeBody: true,
+          showAccountName: true,
+          debugLogging: false,
+          pushoverUserKey: "gZq7RkN2vTx9LmW4pHc8YdF3sJb6Ea",
+          pushoverAppToken: "aK5nQw8ZrT2yHm6VxC9pLd4FsJ7gBe",
+          pushoverDevice: "iphone",
+          filterSender: "carol@example.com",
+          filterSubject: "alert\nbuild",
+          bodyCharLimit: 200,
+          summaryThreshold: 7,
+          notificationPriority: "2",
+          notificationSound: "pushover",
+          retryInterval: 120,
+          expireTime: 7200,
+        };
+        await page.run(
+          `for (const [id, value] of Object.entries(arguments[0])) {
+             const e = document.getElementById(id);
+             if (e.type === "checkbox") e.checked = value; else e.value = String(value);
+             for (const name of ["input", "change"]) e.dispatchEvent(new Event(name, { bubbles: true }));
+           }
+           document.getElementById("save-status").hidden = true;`,
+          edited
+        );
+        await page.click('button[type="submit"]');
+        await page.waitFor(`const e = document.getElementById("save-status"); return !e.hidden && e.classList.contains("ok")`);
+        const stored = await storage.get(Object.keys(edited));
+        check(
+          Object.entries(edited).every(([key, value]) => stored[key] === value),
+          "Save stores every field of the form",
+          stored
+        );
       } finally {
         await page.close();
       }
@@ -956,12 +1011,11 @@ async function main() {
     });
 
     // -- Install and update without settings ---------------------------------
-    /** Uninstalls the add-on, then installs `dirs` one after another (temporarily), each given 3 s to start. */
+    /** Uninstalls the add-on, then installs `dirs` one after another. */
     const reinstall = async (...dirs) => {
       await tb.send("Addon:Uninstall", { id: ADDON_ID });
       for (const dir of dirs) {
-        await tb.send("Addon:Install", { path: dir, temporary: true });
-        await sleep(3000);
+        await install(dir);
       }
     };
 
