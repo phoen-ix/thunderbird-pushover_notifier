@@ -18,7 +18,7 @@ Inventory, 2026-10-31, **58 items** (entry points, events, settings-page element
 ```
 
 Plus 23 cross-cutting rows (notification paths, account types, install/update, language, theme, privacy):
-**81 rows, ✅ 75, ❌ 6** (a 2, c 2, e 2).
+**81 rows, ✅ 76, ❌ 5** (a 2, c 2, e 1).
 
 ## Entry points and events
 
@@ -106,7 +106,7 @@ Plus 23 cross-cutting rows (notification paths, account types, install/update, l
 | Mail date as timestamp; future dates dropped | ✅ Default mode: sender as title, … › timestamp is the mail's date; Default mode: address as title, … › mail dated in the future gets no timestamp |
 | Only set optional parameters are sent | ✅ Default mode: sender as title, … › no empty optional parameters are sent |
 | Account not selected | ✅ Account not selected › no notification |
-| Summary of mail from several accounts (no account name) | ❌ (e) needs one burst over the POP3 and the IMAP account; IMAP fetches lag, so about 20 min to make it deterministic |
+| Summary of mail from several accounts (no account name) | ✅ Burst of mail over two accounts: one summary › a single notification for the mail of both accounts, › title counts the mails without an account name |
 | Pushover rejects a request (4xx): the batch stops, the error is the last status | ✅ Pushover rejects the request › the batch stops after the first rejected request, › the error is shown as last status |
 | Pushover fails once (5xx): retried | ✅ Pushover fails once (HTTP 500) › the request is retried once, › the retry's success is the last status |
 | Quota exhausted (429), network errors | ❌ (c) `tests/pushover.test.mjs` › sendNotification reports an exhausted quota (429), › sendNotification retries a network error once, and not at all when retry is off |

@@ -103,7 +103,7 @@ The scenarios (`tests/e2e/e2e.mjs`) cover:
 - the upgrade from 1.3.3.1 (with and without keys) and a fresh install,
 - notification content: title, body preview and its limit, priority, sound, device, timestamp,
 - Inbox-only mode with every filter kind, on POP3 and IMAP, and skipping junk,
-- summaries, sender and subject filters, every reason not to send (account, consent, switch, keys), and Pushover errors (rejected, retried),
+- summaries (one account and several), sender and subject filters, every reason not to send (account, consent, switch, keys), and Pushover errors (rejected, retried),
 - the settings page: its buttons, input checks and error messages, its permission prompt (allowed and denied), in light and dark mode, and after a fresh install,
 - that keys and mail contents never show up in the console.
 

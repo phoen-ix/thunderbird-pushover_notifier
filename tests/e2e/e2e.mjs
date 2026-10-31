@@ -679,6 +679,20 @@ async function main() {
         const preview = sent.find(r => r.message?.startsWith("IMAP HTML"));
         check(preview?.message === "IMAP HTML\n\nHello from IMAP", "the preview is the plain text of the body", sent.map(r => r.message));
       });
+
+      // Inbox-only mode waits 5 s (not 1.5 s) for more mail: room for the second fetch.
+      await scenario(
+        "Burst of mail over two accounts: one summary",
+        { selectedAccounts: [accountKey, imapAccount.key], summaryThreshold: 3, showAccountName: true, inboxOnly: true },
+        async () => {
+          pushover.clear();
+          await imapAccount.deliver([mail({ subject: "Burst over IMAP" })]);
+          await tb.chrome(GET_NEW_MAIL, imapAccount.key);
+          const sent = await receive([mail({ subject: "Burst over POP3 1" }), mail({ subject: "Burst over POP3 2" })], 1);
+          check(sent.length === 1 && sent[0].message.split("\n").length === 3, "a single notification for the mail of both accounts", sent);
+          check(sent[0]?.title === msg("summaryTitle", ["3"]), "title counts the mails without an account name", sent[0]?.title);
+        }
+      );
     } else {
       console.log("\nIMAP scenarios skipped: GREENMAIL_JAR is not set.");
     }
