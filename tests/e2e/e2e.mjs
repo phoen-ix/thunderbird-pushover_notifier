@@ -1129,6 +1129,9 @@ function launchThunderbird(workDir, proxyPort) {
     env: {
       ...process.env,
       MOZ_HEADLESS: "1",
+      // Chrome-context scripts: --remote-allow-system-access is enough up to
+      // Thunderbird 158; 159 also wants this variable.
+      MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: "1",
       // Containers usually lack the user namespaces Gecko's sandbox needs.
       MOZ_DISABLE_CONTENT_SANDBOX: "1",
       MOZ_DISABLE_GMP_SANDBOX: "1",
