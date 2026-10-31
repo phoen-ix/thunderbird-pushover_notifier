@@ -83,6 +83,7 @@ The add-on is plain JavaScript (ES modules) without a build step.
 npm install        # installs web-ext (dev only)
 npm test           # unit tests (node:test)
 npm run test:e2e   # end-to-end tests in real Thunderbird builds (needs Docker)
+scripts/e2e.sh     # the same, keeping the log and screenshots in $ARTIFACTS
 npm run lint       # web-ext lint; warnings about "messagesRead"/"accountsRead" (Thunderbird-only permissions) and Firefox for Android are expected
 npm run build      # creates web-ext-artifacts/pushover-notifier-<version>.xpi
 ```
@@ -99,11 +100,14 @@ To try it out, open *Tools → Developer Tools → Debug Add-ons* in Thunderbird
 
 The scenarios (`tests/e2e/e2e.mjs`) cover:
 
-- the upgrade from 1.3.3.1,
-- notification content,
-- Inbox-only mode with every filter kind, on POP3 and IMAP,
-- summaries, filters, missing consent, and Pushover errors,
-- the settings page, including its permission prompt, in light and dark mode, and after a fresh install.
+- the upgrade from 1.3.3.1 (with and without keys) and a fresh install,
+- notification content: title, body preview and its limit, priority, sound, device, timestamp,
+- Inbox-only mode with every filter kind, on POP3 and IMAP, and skipping junk,
+- summaries, sender and subject filters, every reason not to send (account, consent, switch, keys), and Pushover errors (rejected, retried),
+- the settings page: its buttons, input checks and error messages, its permission prompt (allowed and denied), in light and dark mode, and after a fresh install,
+- that keys and mail contents never show up in the console.
+
+Which feature is checked where: [`tests/e2e/COVERAGE.md`](tests/e2e/COVERAGE.md).
 
 Useful variables:
 
@@ -130,7 +134,8 @@ It runs the end-to-end test in the current Thunderbird release in English and Ge
 - `_locales/`: translations.
 - `tests/e2e/`: the end-to-end tests.
 - `scripts/docs-screenshots.sh`: regenerates `docs/screenshots/`.
-- `.github/workflows/`: CI (unit tests, lint, build; the end-to-end test on manual dispatch) and the manual *Docs screenshots* workflow.
+- `scripts/e2e.sh`: runs the end-to-end test with its log and screenshots in `$ARTIFACTS`.
+- `.github/workflows/`: CI (unit tests, lint, build, and the end-to-end test, one job per Thunderbird build) and the manual *Docs screenshots* workflow.
 
 ## License
 

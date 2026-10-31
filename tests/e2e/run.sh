@@ -35,7 +35,10 @@ for build in $builds; do
     artifacts="--volume $(cd "$E2E_ARTIFACTS/$version-$lang" && pwd):/artifacts --env E2E_ARTIFACTS=/artifacts --env TZ=Europe/Vienna"
   fi
   # shellcheck disable=SC2086 # $artifacts holds several arguments
-  docker run --rm --volume "$PWD:/repo:ro" --env E2E_VERBOSE="${E2E_VERBOSE:-}" $artifacts \
+  # --init: Node gets signals (an interrupted run stops its container).
+  # E2E_RUN labels the containers (scripts/e2e.sh removes them on exit).
+  docker run --rm --init --label "pushover-notifier-e2e=${E2E_RUN:-manual}" \
+    --volume "$PWD:/repo:ro" --env E2E_VERBOSE="${E2E_VERBOSE:-}" $artifacts \
     "$image" node tests/e2e/e2e.mjs || status=1
 done
 exit $status
