@@ -14,7 +14,6 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { DEFAULTS } from "../../modules/settings.mjs";
 import { Marionette } from "./marionette.mjs";
 import { buildMail, createCertificates, startImapServer, startPop3Server, startPushoverMock } from "./servers.mjs";
 
@@ -39,6 +38,10 @@ const FOLDERS_TIMEOUT_MS = 30000;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failures = [];
 const consoleLines = [];
+// Subjects and bodies of the test mail: the add-on must never log them.
+const mailContents = new Set();
+/** The add-on's debug messages in Thunderbird's console so far. */
+const debugLines = () => consoleLines.filter(line => /Pushover Notifier.*(Queued|Ignoring new mail|left the Inbox|Notification sent)/.test(line));
 let messages = {};
 
 /** The add-on's translation of `key` for Thunderbird's UI language, like i18n.getMessage(). */
@@ -238,6 +241,7 @@ const EXTENSION_INFO = `
     manifestVersion: extension.manifestVersion,
     warnings: extension.warnings,
     permissions: [...extension.permissions],
+    optionsUrl: extension.baseURI.resolve("options/options.html"),
     tabs: (tabmail?.tabInfo ?? []).map(tab => tab.browser?.currentURI?.spec ?? tab.mode?.name ?? ""),
   };
 `;
@@ -302,14 +306,15 @@ const OPEN_OPTIONS = `
   return url;
 `;
 
-// Clicks "Allow" in the prompt Thunderbird shows for permissions.request().
-const ACCEPT_PERMISSION_PROMPT = `
+// Clicks "Allow" (or the first other button) in the prompt Thunderbird shows for permissions.request().
+const ANSWER_PERMISSION_PROMPT = `
+  const [allow] = arguments;
   const win = Services.wm.getMostRecentWindow("mail:3pane");
   const notification = win.PopupNotifications.getNotification("addon-webext-permissions");
   if (!notification) {
     return false;
   }
-  notification.mainAction.callback();
+  (allow ? notification.mainAction : notification.secondaryActions[0]).callback();
   win.PopupNotifications.remove(notification);
   return true;
 `;
@@ -424,6 +429,7 @@ async function main() {
         date: new Date(Math.floor(Date.now() / 1000 - 120) * 1000),
         ...fields,
       };
+      mailContents.add(message.subject).add(message.html ?? message.text);
       return { ...message, raw: buildMail(message) };
     };
     /** Delivers `mails` to the account's Inbox, lets Thunderbird fetch them, returns the notifications sent. */
@@ -531,6 +537,36 @@ async function main() {
       }
     );
 
+    await scenario(
+      "Default mode: address as title, no subject, body limit, high priority, device, no debug messages",
+      { includeBody: true, bodyCharLimit: 10, notificationPriority: "1", pushoverDevice: "pixel", debugLogging: false },
+      async () => {
+        const debugBefore = debugLines().length;
+        const sent = await receive(
+          [
+            mail({ from: "carol@example.com", subject: "", text: "0123456789 and more" }),
+            mail({ subject: "From the future", date: new Date(Date.now() + 86400000) }),
+          ],
+          2
+        );
+        const carol = sent.find(r => r.title === "carol@example.com");
+        const future = sent.find(r => r.message?.startsWith("From the future"));
+        check(Boolean(carol), "the address is the title when the sender has no name", sent.map(r => r.title));
+        check(
+          carol?.message === `${msg("noSubject")}\n\n012345678…`,
+          "mail without a subject says so; the preview stops at the limit",
+          carol?.message
+        );
+        check(
+          carol?.priority === "1" && carol.device === "pixel" && !("retry" in carol) && !("sound" in carol),
+          "high priority goes to the device, without emergency parameters or sound",
+          carol
+        );
+        check(future && !("timestamp" in future), "mail dated in the future gets no timestamp", future);
+        check(debugLines().length === debugBefore, "no debug messages when they are off", debugLines().slice(debugBefore));
+      }
+    );
+
     // -- The reported problem, and the new option ---------------------------
     const filteredMails = () => [
       mail({ subject: "Stays in the Inbox" }),
@@ -539,11 +575,25 @@ async function main() {
       mail({ subject: "spammy offer" }),
       mail({ subject: "delete-me please" }),
     ];
-    let withoutOption = [];
     await scenario("Inbox-only mode off (1.x behaviour): filtered mail", { skipJunk: false }, async () => {
-      withoutOption = await receive(filteredMails(), 5);
+      const withoutOption = await receive(filteredMails(), 5);
       console.log(`    notified: ${JSON.stringify(withoutOption.map(r => r.message))}`);
       check(withoutOption.length > 1, "mail handled by filters notifies too (the reported problem)", withoutOption.length);
+      const notified = withoutOption.map(r => r.message);
+      check(
+        notified.includes("Weekly newsletter") && notified.includes("spammy offer") && !notified.includes("delete-me please"),
+        "mail moved to a normal folder or marked as junk notifies, deleted mail does not",
+        notified
+      );
+    });
+
+    await scenario("Inbox-only mode off, junk skipped", {}, async () => {
+      const notified = (await receive(filteredMails(), 3)).map(r => r.message);
+      check(
+        notified.includes("Stays in the Inbox") && !notified.includes("spammy offer"),
+        "mail marked as junk does not notify",
+        notified
+      );
     });
 
     await scenario("Inbox-only mode on: only mail that stays in the Inbox notifies", { inboxOnly: true }, async () => {
@@ -634,10 +684,10 @@ async function main() {
     }
 
     // -- Summary, filters, consent, errors ----------------------------------
-    await scenario("Burst of mail: one summary", { summaryThreshold: 5 }, async () => {
+    await scenario("Burst of mail: one summary", { summaryThreshold: 5, showAccountName: true }, async () => {
       const sent = await receive(Array.from({ length: 6 }, (_, i) => mail({ subject: `Burst ${i + 1}` })), 1);
       check(sent.length === 1, "a single notification", sent.length);
-      check(sent[0]?.title === msg("summaryTitle", ["6"]), "title counts the mails", sent[0]?.title);
+      check(sent[0]?.title === `${msg("summaryTitle", ["6"])} · E2E POP3`, "title counts the mails and names the account", sent[0]?.title);
       check(sent[0]?.message.split("\n").length === 6, "one line per mail", sent[0]?.message);
     });
 
@@ -658,12 +708,24 @@ async function main() {
       );
     });
 
-    await scenario("Account not selected", { selectedAccounts: [] }, async () => {
-      check((await receive([mail({})], 0)).length === 0, "no notification");
-    });
+    // Every reason not to send anything.
+    for (const [title, settings] of [
+      ["Account not selected", { selectedAccounts: [] }],
+      ["No consent", { dataConsent: false }],
+      ["Notifications switched off", { enableNotifications: false }],
+      ["No user key", { pushoverUserKey: "" }],
+    ]) {
+      await scenario(title, settings, async () => {
+        check((await receive([mail({})], 0)).length === 0, "no notification");
+      });
+    }
 
-    await scenario("No consent", { dataConsent: false }, async () => {
-      check((await receive([mail({})], 0)).length === 0, "no notification");
+    await scenario("Pushover fails once (HTTP 500)", {}, async () => {
+      pushover.setMode("error-once");
+      const sent = await receive([mail({ subject: "Retried" })], 2);
+      check(sent.length === 2 && sent.every(r => r.message === "Retried"), "the request is retried once", sent.map(r => r.message));
+      const { lastStatus } = await storage.get(["lastStatus"]);
+      check(lastStatus?.ok === true, "the retry's success is the last status", lastStatus);
     });
 
     await scenario("Pushover rejects the request", {}, async () => {
@@ -713,7 +775,10 @@ async function main() {
         await page.screenshot("options-delivery-error");
 
         await page.click("#send-test");
-        await page.waitFor(`return document.getElementById("credentials-status").classList.contains("ok")`);
+        check(
+          await page.waitFor(`return document.getElementById("credentials-status").textContent === ${JSON.stringify(msg("testSent"))}`),
+          "Send test confirms the delivery"
+        );
         check(
           pushover.requests.some(r => r.title === msg("testTitle") && r.message === msg("testMessage")),
           "Send test notification works without host permission (CORS)",
@@ -724,14 +789,25 @@ async function main() {
           "the successful test replaces the failure shown as last notification"
         );
 
+        /** Answers the permission prompt once it shows; false if it never does. */
+        const answerPrompt = async allow => {
+          for (let i = 0; i < 50; i++) {
+            if (await tb.chrome(ANSWER_PERMISSION_PROMPT, allow)) {
+              return true;
+            }
+            await sleep(100);
+          }
+          return false;
+        };
         await page.click("#validate-keys");
-        let prompted = false;
-        for (let i = 0; i < 50 && !prompted; i++) {
-          prompted = await tb.chrome(ACCEPT_PERMISSION_PROMPT);
-          await sleep(100);
-        }
-        check(prompted, "Check keys asks for access to api.pushover.net");
-        await page.waitFor(`return !document.getElementById("credentials-status").hidden`);
+        check(await answerPrompt(false), "Check keys asks for access to api.pushover.net");
+        check(
+          await page.waitFor(`return document.getElementById("credentials-status").textContent === ${JSON.stringify(msg("permissionDenied"))}`),
+          "Check keys says when the access was denied"
+        );
+        await page.click("#validate-keys");
+        check(await answerPrompt(true), "Check keys asks again");
+        await page.waitFor(`return document.getElementById("credentials-status").textContent === ${JSON.stringify(msg("keysValid", ["pixel, iphone"]))}`);
         const validation = await page.run(`
           return {
             status: document.getElementById("credentials-status").textContent,
@@ -746,8 +822,15 @@ async function main() {
 
         await page.click("#load-sounds");
         await page.waitFor(`return !document.getElementById("delivery-status").hidden`);
-        const sounds = await page.run(`return [...document.getElementById("notificationSound").options].map(o => o.textContent)`);
-        check(sounds.includes("My E2E Sound"), "Load sounds adds the custom sounds (no extra prompt)", sounds);
+        const sounds = await page.run(`return {
+          status: document.getElementById("delivery-status").textContent,
+          options: [...document.getElementById("notificationSound").options].map(o => o.textContent),
+        }`);
+        check(
+          sounds.status === msg("soundsLoaded", ["2"]) && sounds.options.join() === [msg("soundDefault"), "Pushover (default)", "My E2E Sound"].join(),
+          "Load sounds replaces the list with the account's sounds (no extra prompt)",
+          sounds
+        );
 
         await page.run(`
           document.getElementById("notificationSound").value = "e2e-custom";
@@ -777,28 +860,133 @@ async function main() {
       }
     });
 
-    await scenario("Options page after a fresh install", { ...DEFAULTS, lastStatus: null, customSounds: null }, async () => {
+    await scenario("Options page: input checks and errors", { notificationSound: "retired-sound" }, async () => {
       const page = await OptionsPage.open(tb, await tb.chrome(OPEN_OPTIONS, ADDON_ID));
+      /** Sets a field like typing does. */
+      const type = (id, value) =>
+        page.run(
+          `const e = document.getElementById(arguments[0]);
+           e.value = arguments[1];
+           for (const name of ["input", "change"]) e.dispatchEvent(new Event(name, { bubbles: true }));`,
+          id,
+          value
+        );
+      /** Clicks `selector` and waits until the status `statusId` shows `text` (hidden first, so an old text doesn't count). */
+      const clickShows = async (selector, statusId, text) => {
+        await page.run(`document.getElementById(arguments[0]).hidden = true`, statusId);
+        await page.click(selector);
+        return page.waitFor(`const e = document.getElementById(${JSON.stringify(statusId)}); return !e.hidden && e.textContent === ${JSON.stringify(text)}`);
+      };
+      const shown = () =>
+        page.run(`return {
+          token: document.getElementById("pushoverAppToken").type + " " + document.getElementById("toggle-token").textContent,
+          emergency: !document.getElementById("emergency-settings").hidden,
+          bodyLimit: !document.getElementById("bodyCharLimit").disabled,
+          accountsWarning: !document.getElementById("accounts-warning").hidden,
+          userKeyMarked: document.getElementById("pushoverUserKey").classList.contains("invalid"),
+        }`);
       try {
-        await page.waitFor(`return document.querySelector('input[name="account"]') !== null`);
-        const state = await page.run(`
-          return {
-            consent: document.getElementById("dataConsent").checked,
-            userKey: document.getElementById("pushoverUserKey").value,
-            accountsWarning: !document.getElementById("accounts-warning").hidden,
-            lastStatus: document.getElementById("last-status").textContent,
-          };
-        `);
         check(
-          !state.consent && state.userKey === "" && state.accountsWarning && state.lastStatus === msg("lastStatusNone"),
-          "asks for consent, keys and accounts",
+          await page.waitFor(`return document.getElementById("notificationSound").value === "retired-sound"`),
+          "a saved sound that is not in the list stays selected"
+        );
+        let state = await shown();
+        check(
+          state.token === `password ${msg("buttonShow")}` && !state.emergency && !state.bodyLimit && !state.accountsWarning,
+          "token masked; no emergency settings, body limit or account warning",
           state
         );
-        await page.screenshot("options-first-run", "#accounts-list");
+        await page.click("#toggle-token");
+        await type("notificationPriority", "2");
+        await page.click("#includeBody");
+        await page.click('input[name="account"]:checked');
+        state = await shown();
+        check(state.token === `text ${msg("buttonHide")}`, "Show reveals the token", state.token);
+        check(state.emergency && state.bodyLimit && state.accountsWarning, "emergency settings, body limit and account warning follow the form", state);
+        await page.click("#toggle-token");
+        await page.click(`input[name="account"][value="${accountKey}"]`);
+        state = await shown();
+        check(state.token === `password ${msg("buttonShow")}` && !state.accountsWarning, "Hide masks the token; selecting an account clears the warning", state);
+
+        pushover.clear();
+        await type("pushoverUserKey", "not-a-key");
+        check(await clickShows('button[type="submit"]', "save-status", msg("keysMalformed")), "Save refuses a malformed key");
+        check((await shown()).userKeyMarked, "the malformed key is marked");
+        check((await storage.get(["pushoverUserKey"])).pushoverUserKey === USER_KEY, "nothing is saved");
+        check(await clickShows("#send-test", "credentials-status", msg("keysMissing")), "Send test refuses a malformed key");
+        await type("pushoverUserKey", USER_KEY);
+        check(!(await shown()).userKeyMarked, "typing clears the mark");
+        await type("pushoverAppToken", "");
+        check(await clickShows("#validate-keys", "credentials-status", msg("keysMissing")), "Check keys needs both keys");
+        check(await clickShows("#load-sounds", "delivery-status", msg("tokenMissing")), "Load sounds needs the token");
+        check(pushover.calls.length === 0, "nothing is sent to Pushover without valid keys", pushover.calls);
+        await type("pushoverAppToken", APP_TOKEN);
+
+        await page.click("#dataConsent");
+        check(await clickShows('button[type="submit"]', "save-status", msg("savedWithoutConsent")), "Save without consent warns that nothing will be sent");
+        check((await storage.get(["dataConsent"])).dataConsent === false, "the withdrawn consent is saved");
+        await page.click("#dataConsent");
+        check(await clickShows('button[type="submit"]', "save-status", msg("saved")), "Save with consent confirms");
+        check(await page.waitFor(`return document.getElementById("save-status").hidden`), "the confirmation disappears after a few seconds");
+
+        pushover.setMode("reject");
+        const error = "application token is invalid (HTTP 400)";
+        check(await clickShows("#send-test", "credentials-status", msg("testFailed", [error])), "a failed test notification shows Pushover's error");
+        check(await page.waitFor(`return document.getElementById("last-status").classList.contains("error")`), "and becomes the last status");
+        check(await clickShows("#validate-keys", "credentials-status", msg("keysInvalid", [error])), "Check keys shows Pushover's error");
+        check(await clickShows("#load-sounds", "delivery-status", msg("soundsFailed", [error])), "Load sounds shows Pushover's error");
       } finally {
+        pushover.setMode("ok");
         await page.close();
       }
     });
+
+    // -- Install and update without settings ---------------------------------
+    /** Uninstalls the add-on, then installs `dirs` one after another (temporarily), each given 3 s to start. */
+    const reinstall = async (...dirs) => {
+      await tb.send("Addon:Uninstall", { id: ADDON_ID });
+      for (const dir of dirs) {
+        await tb.send("Addon:Install", { path: dir, temporary: true });
+        await sleep(3000);
+      }
+    };
+
+    console.log("\nUpdate from 1.x without keys");
+    await reinstall(legacyDir, REPO);
+    const { dataConsent } = await storage.get(["dataConsent"]);
+    check(dataConsent === undefined, "consent is not assumed without keys", dataConsent);
+
+    console.log("\nFresh install");
+    await reinstall(REPO);
+    let fresh;
+    for (let i = 0; i < 50; i++) {
+      fresh = await tb.chrome(EXTENSION_INFO, ADDON_ID);
+      if (fresh?.tabs.includes(fresh.optionsUrl)) {
+        break;
+      }
+      await sleep(200);
+    }
+    check(fresh?.tabs.includes(fresh.optionsUrl), "the settings page opens by itself", fresh);
+    const page = await OptionsPage.open(tb, fresh.optionsUrl);
+    try {
+      await page.waitFor(`return document.querySelector('input[name="account"]') !== null`);
+      const state = await page.run(`
+        return {
+          consent: document.getElementById("dataConsent").checked,
+          userKey: document.getElementById("pushoverUserKey").value,
+          accountsWarning: !document.getElementById("accounts-warning").hidden,
+          lastStatus: document.getElementById("last-status").textContent,
+        };
+      `);
+      check(
+        !state.consent && state.userKey === "" && state.accountsWarning && state.lastStatus === msg("lastStatusNone"),
+        "asks for consent, keys and accounts",
+        state
+      );
+      await page.screenshot("options-first-run", "#accounts-list");
+    } finally {
+      await page.close();
+    }
   } catch (error) {
     failures.push(error.message);
     console.error(error);
@@ -819,6 +1007,10 @@ async function main() {
       !/application token is invalid/.test(line)
   );
   check(unexpected.length === 0, "no unexpected errors or warnings from the add-on", unexpected);
+  check(debugLines().length > 0, "debug messages are written when they are on");
+  const secrets = [USER_KEY, APP_TOKEN, ...[...mailContents].filter(Boolean)];
+  const leaks = consoleLines.filter(line => /Pushover Notifier/.test(line) && secrets.some(secret => line.includes(secret)));
+  check(leaks.length === 0, "keys and mail contents are never logged", leaks);
 
   if (failures.length > 0) {
     console.log(`\n${failures.length} check(s) failed.`);

@@ -265,17 +265,21 @@ export async function startPushoverMock({ key, cert }) {
         res.end(JSON.stringify(data));
       };
       calls.push(`${req.method} ${url.pathname}`);
-      if (url.pathname === "/1/users/validate.json" && req.method === "POST") {
+      const message = url.pathname === "/1/messages.json";
+      if (message && req.method === "POST") {
+        requests.push({ ...Object.fromEntries(new URLSearchParams(body)), receivedAt: Date.now() });
+      }
+      if (mode === "reject" && req.method !== "OPTIONS") {
+        reply(400, { token: "invalid", errors: ["application token is invalid"], status: 0, request: "e2e" }, message);
+      } else if (mode === "error-once" && message && req.method === "POST") {
+        mode = "ok";
+        reply(500, { status: 0, errors: ["internal error"] }, true);
+      } else if (url.pathname === "/1/users/validate.json" && req.method === "POST") {
         reply(200, { status: 1, devices: ["pixel", "iphone"], licenses: ["Android", "iOS"] }, false);
       } else if (url.pathname === "/1/sounds.json" && req.method === "GET") {
         reply(200, { status: 1, sounds: { pushover: "Pushover (default)", "e2e-custom": "My E2E Sound" } }, false);
-      } else if (url.pathname === "/1/messages.json" && req.method === "POST") {
-        requests.push({ ...Object.fromEntries(new URLSearchParams(body)), receivedAt: Date.now() });
-        if (mode === "reject") {
-          reply(400, { token: "invalid", errors: ["application token is invalid"], status: 0, request: "e2e" }, true);
-        } else {
-          reply(200, { status: 1, request: `e2e-${requests.length}` }, true);
-        }
+      } else if (message && req.method === "POST") {
+        reply(200, { status: 1, request: `e2e-${requests.length}` }, true);
       } else if (url.pathname === "/1/messages.json" && req.method === "OPTIONS") {
         res.writeHead(200, { "access-control-allow-origin": "*", "access-control-allow-methods": "POST" });
         res.end();
@@ -313,7 +317,10 @@ export async function startPushoverMock({ key, cert }) {
       requests.length = 0;
       calls.length = 0;
     },
-    /** "ok" accepts messages, "reject" answers like Pushover does for a bad token. */
+    /**
+     * "ok" accepts everything, "reject" answers every call like Pushover does
+     * for a bad token, "error-once" answers the next message with HTTP 500.
+     */
     setMode(newMode) {
       mode = newMode;
     },
