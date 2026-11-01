@@ -1,8 +1,10 @@
 # Pushover Notifier – Thunderbird Add-on
 
+Sends a [Pushover](https://pushover.net) notification to your phone (or any other Pushover device) when new mail arrives in Thunderbird. It is useful for mail accounts that don't allow forwarding.
+
 <img src="docs/screenshots/options-settings.png" alt="The add-on's settings page: consent, checked Pushover keys with the devices found, and the accounts to monitor" width="800">
 
-Sends a [Pushover](https://pushover.net) notification to your phone (or any other Pushover device) when new mail arrives in Thunderbird. It is useful for mail accounts that don't allow forwarding.
+**Status:** version 2.0.0 for Thunderbird 140 and newer, available as an `.xpi` on the [releases page](https://github.com/phoen-ix/thunderbird-pushover_notifier/releases).
 
 This add-on is not affiliated with or endorsed by Pushover. It was created independently. Use at your own risk.
 
@@ -24,10 +26,19 @@ This add-on is not affiliated with or endorsed by Pushover. It was created indep
 
 ## Setup
 
-1. Install the add-on. Its settings page opens automatically. You can also reach it later via *Add-ons and Themes → Pushover Notifier → Options*.
-2. Read the privacy notice and tick the consent checkbox.
-3. Enter your **user key** and **API token**. Use **Check keys** to verify them (Thunderbird asks once for permission to access `api.pushover.net`), and **Send test notification** to see a push arrive.
-4. Select the **accounts** to monitor and click **Save settings**.
+1. Download `pushover-notifier-<version>.xpi` from the [latest release](https://github.com/phoen-ix/thunderbird-pushover_notifier/releases/latest).
+2. In Thunderbird, open *Add-ons and Themes*, click the gear icon and choose *Install Add-on From File…*. The settings page opens automatically; later you reach it via *Add-ons and Themes → Pushover Notifier → Options*.
+3. Read the privacy notice and tick the consent checkbox.
+4. Enter your **user key** and **API token**. Use **Check keys** to verify them (Thunderbird asks once for permission to access `api.pushover.net`), and **Send test notification** to see a push arrive.
+5. Select the **accounts** to monitor and click **Save settings**.
+
+### Upgrading from 1.3.3.1
+
+- **Thunderbird first:** update to 140 or newer; the add-on then updates as usual and keeps your keys, accounts and settings.
+- **Keys entered before:** notifications continue without any action. Otherwise tick the consent checkbox and enter your keys.
+- **Old behaviour:** untick *Skip mail marked as junk* for junk notifications, and set the summary threshold to 0 for one push per mail.
+
+All changes in 2.0.0: [CHANGELOG.md](CHANGELOG.md).
 
 ## Settings
 
@@ -42,10 +53,10 @@ This add-on is not affiliated with or endorsed by Pushover. It was created indep
 | Only mail from senders / with subjects containing | One term per line. A mail must contain at least one term; case doesn't matter. Empty means all mail. |
 | Include a preview of the mail body | Adds the start of the body. *Maximum preview length*: 0 means as much as fits into Pushover's 1024 characters. |
 | Show the account name in the title | Useful when you monitor several accounts. |
-| Send one summary when at least N mails arrive at once | 0 turns summaries off. |
+| Send one summary when at least this many mails arrive at once | Default 5; 0 turns summaries off. |
 | Priority, Sound, Device | Passed to Pushover. *Load sounds from Pushover* adds your custom sounds. *Device* can be left empty to send to all devices. |
-| Emergency: repeat every / stop after | Only for emergency priority. Pushover requires at least 30 s between repeats and at most 10800 s (3 h) in total. |
-| Debug messages | Writes details to *Tools → Developer Tools → Error Console*. Keys and mail contents are never logged. |
+| Repeat every … seconds, Stop repeating after … seconds | Only for emergency priority. Pushover requires at least 30 s between repeats and at most 10800 s (3 h) in total. |
+| Write debug messages to the error console | Writes details to *Tools → Developer Tools → Error Console*. Keys and mail contents are never logged. |
 
 The *Last notification* section shows the result of the last delivery. All settings at a glance, with a failed delivery: [full settings page](docs/screenshots/options-delivery-error.png). The page follows Thunderbird's dark mode and is available in German; all screenshots are in the [gallery](docs/screenshots/README.md).
 
@@ -65,7 +76,10 @@ This is tested with POP3 and IMAP accounts and with all these filter kinds: movi
 
 Known limits:
 
-- The Inbox is checked once, about 5 seconds after Thunderbird reported the mail. A filter move that is still running then can still produce a notification: most likely a filter that runs *after junk classification* on an IMAP account, because it acts last and the move happens on the server (a slow server or a busy computer). On Thunderbird 140, IMAP filters that run *after junk classification* only run at the next folder update, so that mail notifies every time. Listening for the move doesn't help: the notification has been sent by the time the move completes, and Pushover can't take it back.
+- **One check after about 5 seconds:** a filter move still running then can still produce a notification.
+  - Most likely: a filter that runs *after junk classification* on an IMAP account. It acts last, and the move happens on the server (a slow server or a busy computer).
+  - On Thunderbird 140, IMAP filters that run *after junk classification* only run at the next folder update, so that mail notifies every time.
+  - Listening for the move doesn't help: the notification has been sent by the time the move completes, and Pushover can't take it back.
 - With the IMAP delete model *"Just mark it as deleted"*, a mail moved away on a server without MOVE support stays in the Inbox (marked as deleted) and may still notify you.
 - Notifications arrive a few seconds later than without this mode.
 
@@ -77,16 +91,18 @@ Nothing is sent to the add-on's author or to anyone else, and the add-on collect
 
 ## Development
 
-The add-on is plain JavaScript (ES modules) without a build step.
+The add-on is plain JavaScript (ES modules) without a build step. The tooling needs Node 26; the end-to-end image uses Node 26.13.0.
 
 ```sh
-npm install        # installs web-ext (dev only)
+npm install        # installs web-ext (dev only); .npmrc takes only versions published at least a day ago
 npm test           # unit tests (node:test)
 npm run test:e2e   # end-to-end tests in real Thunderbird builds (needs Docker)
 scripts/e2e.sh     # the same, keeping the log and screenshots in $ARTIFACTS
 npm run lint       # web-ext lint; warnings about "messagesRead"/"accountsRead" (Thunderbird-only permissions) and Firefox for Android are expected
 npm run build      # creates web-ext-artifacts/pushover-notifier-<version>.xpi
 ```
+
+The `.xpi` holds only the add-on files and `LICENSE`; README, CHANGELOG, docs, tests and scripts stay out (`webExt.ignoreFiles` in `package.json`).
 
 To try it out, open *Tools → Developer Tools → Debug Add-ons* in Thunderbird, click *Load Temporary Add-on…* and select `manifest.json`.
 
@@ -124,7 +140,10 @@ scripts/docs-screenshots.sh            # writes docs/screenshots/*.png
 scripts/docs-screenshots.sh /tmp/shots # or somewhere else
 ```
 
-It runs the end-to-end test in the current Thunderbird release in English and German and keeps the English set plus the German `options-settings.de.png`. If a check fails, it still copies the screenshots, then exits with an error; the log names the check. Shrink the PNGs with `oxipng -o 4 --strip safe docs/screenshots/*.png` before committing. On GitHub, the manual *Docs screenshots* workflow does the same and returns them as an artifact.
+- **What it runs:** the end-to-end test in the current Thunderbird release in English and German. It keeps the English set plus the German `options-settings.de.png`.
+- **On a failed check:** it still copies the screenshots, then exits with an error; the log names the check.
+- **Before committing:** shrink the PNGs with `oxipng -o 4 --strip safe docs/screenshots/*.png`.
+- **On GitHub:** the manual *Docs screenshots* workflow does the same and returns them as an artifact.
 
 ### Layout
 
