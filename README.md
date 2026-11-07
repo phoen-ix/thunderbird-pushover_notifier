@@ -98,7 +98,7 @@ npm install        # installs web-ext (dev only); .npmrc takes only versions pub
 npm test           # unit tests (node:test)
 npm run test:e2e   # end-to-end tests in real Thunderbird builds (needs Docker)
 scripts/e2e.sh     # the same, keeping the log and screenshots in $ARTIFACTS
-npm run lint       # web-ext lint; warnings about "messagesRead"/"accountsRead" (Thunderbird-only permissions) and Firefox for Android are expected
+npm run lint       # web-ext lint, warnings fail; scripts/lint.mjs skips only the Firefox-only ones ("messagesRead"/"accountsRead", Firefox for Android)
 npm run build      # creates web-ext-artifacts/pushover-notifier-<version>.xpi
 ```
 
@@ -154,6 +154,7 @@ scripts/docs-screenshots.sh /tmp/shots # or somewhere else
 - `tests/e2e/`: the end-to-end tests.
 - `scripts/docs-screenshots.sh`: regenerates `docs/screenshots/`.
 - `scripts/e2e.sh`: runs the end-to-end test with its log and screenshots in `$ARTIFACTS`.
+- `scripts/lint.mjs`: `npm run lint` (web-ext lint, warnings fail except the Firefox-only ones).
 - `.github/workflows/`: CI (unit tests, lint, build, and the end-to-end test, one job per Thunderbird build) and the manual *Docs screenshots* workflow.
 
 ## License
